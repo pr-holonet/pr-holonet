@@ -1,0 +1,27 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: A simple backend for handling events sent from Iridium to Twilio.
+Resources:
+  holonethandler:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs6.10
+      CodeUri: .
+      Description: A simple backend for proxying events sent from Iridium to Twilio.
+      MemorySize: 128
+      Timeout: 15
+      Role: 'arn:aws:iam::855118616329:role/service-role/holonet'
+      Events:
+        Api1:
+          Type: Api
+          Properties:
+            Path: /holonet-handler
+            Method: ANY
+      Environment:
+        Variables:
+          TWILIO_AUTH_TOKEN: <your token here>
+          TWILIO_ACCOUNT_SID: <your SID here>
+          TWILIO_PHONE_NUMBER: <your twilio phone number here>
+      Tags:
+        'lambda-console:blueprint': twilio-simple-blueprint

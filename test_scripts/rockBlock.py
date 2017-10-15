@@ -274,8 +274,32 @@ class rockBlock(object):
             
             self.s.close()
             self.s = None
-    
-     
+
+    # functions for use with the HOLONET API
+    # send_message(recipient, body) with some kind of error / success response
+    # is_message_waiting() -> bool
+    # get_messages() -> string list
+    # get_signal_strength() -> int```
+
+    # Need to refactor this later but here goes...
+
+    def send_message(self, recipient, body):
+        # this method sends a message to the rock block module
+        # for now only merges the recipient with the body and uses the old send message function
+        new_msg = recipient + ":" + body
+        self.sendMessage(new_msg)
+
+    def is_message_waiting(self):
+        self.messageCheck()
+
+    def get_messages(self):
+        pass
+
+    def get_signal_strength(self):
+        response = self.requestSignalStrength()
+        return response
+
+
     @staticmethod
     def listPorts():
         

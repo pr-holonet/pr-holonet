@@ -11,7 +11,7 @@ const TWILIO_PHONE = process.env.TWILIO_PHONE_NUMBER;
 exports.handler = (event, context, callback) => {
     console.log("Received message!", event, context);
 
-    let p = event.queryStringParameters;
+    let p = urlDecode(event.body);
     let imei = p.imei;
     let data = p.data;
     
@@ -76,6 +76,12 @@ exports.handler = (event, context, callback) => {
 
 function urlEncode(obj) {
     return Object.keys(obj).map(k => `${k}=${encodeURIComponent(obj[k])}`).join("&");
+}
+
+function urlDecode(body) {
+    var out = {};
+    body.split('&').map(prop => prop.split('=')).forEach(([k, v]) => out[k] = decodeURIComponent(v));
+    return out;
 }
 
 function hex2a(hex) {

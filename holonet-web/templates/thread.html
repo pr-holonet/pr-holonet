@@ -1,0 +1,35 @@
+<!doctype html>
+<head>
+<title>{{ recipient }}</title>
+</head>
+<body>
+<p><a href="/">Back to all messages</a></p>
+
+<h1>Messages in thread with {{ recipient }}</h1>
+{% for msg in messages %}
+<p
+{% if msg.not_yet_sent %}
+style='color: red'
+{% endif %}
+>
+<code>{{ msg.timestamp }} {{ msg.arrow|safe }} </code>{{ msg.body }}</p>
+{% endfor %}
+
+<h1>Reply</h1>
+<form action="/send_message" method="post">
+<input name="recipient" type="hidden" value="{{recipient}}">
+<textarea name="body" rows="4" cols="50">
+</textarea>
+<input type="submit" value="Reply">
+</form>
+
+{% if messages %}
+<h1>Delete thread</h1>
+
+<form action="/thread_delete/{{recipient}}">
+<input type="submit" value="Delete">
+</form>
+{% endif %}
+
+</body>
+</html>

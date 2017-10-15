@@ -1,0 +1,37 @@
+<!doctype html>
+<head>
+<title>Holonet test</title>
+</head>
+<body>
+<h1>Messages in outbox</h1>
+{% for msg in outbox %}
+<p><a href="/test/{{ msg.filename }}">{{ msg.filename }}</a>: {{ msg.timestamp }} {{ msg.local_user }} &rarr; {{ msg.recipient }}: {{ msg.body }}</p>
+{% endfor %}
+
+<h1>Messages in inbox</h1>
+{% for msg in inbox %}
+<p><a href="/test/{{ msg.filename }}">{{ msg.filename }}</a>: {{ msg.data }}</p>
+{% endfor %}
+
+<h1>Threads</h1>
+{% for recip in recipients %}
+<p><a href="/thread/{{ recip }}">{{ recip }}</a></p>
+{% endfor %}
+
+<h1>Send message</h1>
+<form action="/send_message" method="post">
+Recipient: <input name="recipient" type="text">
+<br>
+<br>
+<textarea name="body" rows="4" cols="50">
+</textarea>
+<input type="submit" value="Send">
+</form>
+
+<h1>Send / receive</h1>
+<form action="/send_receive" method="post">
+<input type="submit" value="Sync">
+</form>
+
+</body>
+</html>

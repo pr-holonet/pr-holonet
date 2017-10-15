@@ -1,0 +1,44 @@
+<!doctype html>
+<head>
+<title>Holonet</title>
+</head>
+<body>
+{% if outbox %}
+<h1>Messages not yet sent</h1>
+{% for msg in outbox %}
+<p><code>{{ msg.timestamp }} &rarr; </code>{{ msg.recipient }}: {{ msg.body }}</p>
+{% endfor %}
+{% endif %}
+
+{% if recipients %}
+<h1>Threads</h1>
+{% for recip in recipients %}
+<p><a href="/thread/{{ recip }}">{{ recip }}</a></p>
+{% endfor %}
+{% endif %}
+
+<h1>Send message</h1>
+<form action="/send_message" method="post">
+<table border="0">
+<tr>
+<td>Recipient:</td><td><input name="recipient" type="text"><td>
+</tr>
+<tr>
+<td>Message:</td><td>
+<textarea name="body" rows="4" cols="50">
+</textarea>
+</td>
+</tr>
+<td>&nbsp;</td>
+<td><input type="submit" value="Send"></td>
+</tr>
+</table>
+</form>
+
+<h1>Refresh</h1>
+<form action="/send_receive" method="post">
+<p>Send and receive messages now: <input type="submit" value="Refresh"></p>
+</form>
+
+</body>
+</html>

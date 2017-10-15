@@ -1,0 +1,10 @@
+[MASTER]
+persistent = no
+reports = no
+
+[MESSAGES CONTROL]
+disable = broad-except, fixme, global-statement, invalid-name,
+          missing-docstring, no-else-return
+
+[SIMILARITIES]
+ignore-imports=yes

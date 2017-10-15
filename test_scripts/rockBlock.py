@@ -461,7 +461,7 @@ class rockBlock(object):
                     self.s.readline()   #OK
                     
                                     
-                    response = response.replace("+SBDIX: ", "").decode()    #+SBDIX:<MO status>,<MOMSN>,<MT status>,<MTMSN>,<MT length>,<MTqueued>
+                    response = response.replace("+SBDIX: ", "")    #+SBDIX:<MO status>,<MOMSN>,<MT status>,<MTMSN>,<MT length>,<MTqueued>
                 
                     parts = response.split(",")
                 

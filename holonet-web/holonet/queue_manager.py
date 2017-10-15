@@ -1,4 +1,5 @@
 import asyncio
+import traceback
 from threading import Thread
 
 from holonet import mailboxes, rockBlock
@@ -46,7 +47,7 @@ def _get_messages_background():
     _queue_manager.get_messages()
 
 
-class QueueManager(object):
+class QueueManager(rockBlock.rockBlockProtocol):
     def __init__(self):
         self.rockblock = rockBlock.rockBlock("/dev/ttyUSB0", self)
 
@@ -58,6 +59,7 @@ class QueueManager(object):
             self._try_to_check_for_messages()
         except Exception as err:
             print('Error: failed to check for messages: %s' % err)
+            traceback.print_exc()
 
     def _try_to_check_for_messages(self):
         # TODO: Call RockBLOCK to check whether any messages are pending, and
@@ -80,11 +82,13 @@ class QueueManager(object):
                 self._try_to_get_messages()
             except Exception as err:
                 print('Error: failed to get messages: %s' % err)
+                traceback.print_exc()
 
         try:
             mailboxes.accept_all_inbox_messages()
         except Exception as err:
             print('Error: failed to check for messages: %s' % err)
+            traceback.print_exc()
 
 
     def _try_to_get_messages(self):
@@ -112,6 +116,7 @@ class QueueManager(object):
         except Exception as err:
             print('Error: Tried to send message %s, but failed: %s' %
                   (msg['filename'], err))
+            traceback.print_exc()
             # TODO: We're currently just leaving the message, so we'll retry it
             # forever.  Give up at some point?
 

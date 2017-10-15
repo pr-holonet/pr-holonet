@@ -1,17 +1,24 @@
 import asyncio
-import time
 from threading import Thread
 
-from holonet import mailboxes
+from holonet import mailboxes, rockBlock
 
 
 _event_loop = None
 _thread = None
+_queue_manager = None
+
+
+class SendFailureException(Exception):
+    pass
 
 
 def start():
     global _event_loop
     global _thread
+    global _queue_manager
+
+    _queue_manager = QueueManager()
 
     _event_loop = asyncio.new_event_loop()
     _thread = Thread(target=_event_loop.run_forever)
@@ -19,78 +26,112 @@ def start():
     _thread.start()
 
 
+
 def check_for_messages():
     _event_loop.call_soon_threadsafe(_check_for_messages_background)
 
 def _check_for_messages_background():
-    try:
-        _try_to_check_for_messages()
-    except Exception as err:
-        print('Error: failed to check for messages: %s' % err)
-
-def _try_to_check_for_messages():
-    # TODO: Call RockBLOCK to check whether any messages are pending, and
-    # update the locally cached flag for the has_messages status.
-    print('RockBLOCK: would check for pending messages')
-    time.sleep(4)
-
-
-def get_messages():
-    _event_loop.call_soon_threadsafe(_get_messages_background)
-
-def _get_messages_background():
-    check_for_messages()
-
-    # TODO: Check locally cached flag for RockBLOCK has_messages status.
-    has_messages = True
-    if has_messages:
-        try:
-            _try_to_get_messages()
-        except Exception as err:
-            print('Error: failed to get messages: %s' % err)
-
-    try:
-        mailboxes.accept_all_inbox_messages()
-    except Exception as err:
-        print('Error: failed to check for messages: %s' % err)
-
-
-def _try_to_get_messages():
-    # TODO: Call RockBLOCK to get messages.
-    print('RockBLOCK: would get messages')
-    time.sleep(10)
-    messages = []
-
-    for msg_data in messages:
-        mailboxes.save_message_to_inbox(msg_data)
-
-    # TODO: Do we need a call to RockBLOCK to say that we've accepted
-    # messages / turn off the message-waiting flag?
-
+    _queue_manager.check_for_messages()
 
 def check_outbox():
     _event_loop.call_soon_threadsafe(_check_outbox_background)
 
 def _check_outbox_background():
-    outbox = mailboxes.read_outbox()
+    _queue_manager.check_outbox()
 
-    for msg in outbox:
-        _send_message(msg)
+def get_messages():
+    _event_loop.call_soon_threadsafe(_get_messages_background)
 
-
-def _send_message(msg):
-    try:
-        _try_to_send_message(msg)
-        mailboxes.remove_from_outbox(msg['filename'])
-    except Exception as err:
-        print('Error: Tried to send message %s, but failed: %s' %
-              (msg['filename'], err))
-        # TODO: We're currently just leaving the message, so we'll retry it
-        # forever.  Give up at some point?
+def _get_messages_background():
+    _queue_manager.get_messages()
 
 
-def _try_to_send_message(msg):
-    # TODO: Call RockBLOCK with the message.
-    # TODO: Throw an exception if the send failed.
-    print('RockBLOCK: would send %s' % msg)
-    time.sleep(40)
+class QueueManager(object):
+    def __init__(self):
+        self.rockblock = rockBlock.rockBlock("/dev/ttyUSB0", self)
+
+        self.send_status = None
+
+
+    def check_for_messages(self):
+        try:
+            self._try_to_check_for_messages()
+        except Exception as err:
+            print('Error: failed to check for messages: %s' % err)
+
+    def _try_to_check_for_messages(self):
+        # TODO: Call RockBLOCK to check whether any messages are pending, and
+        # update the locally cached flag for the has_messages status.
+        # This is a no-op right now because we have not implemented the ring
+        # line.
+        print('RockBLOCK: would check for pending messages')
+        _ = self
+        # time.sleep(4)
+
+    def get_messages(self):
+        self.check_for_messages()
+
+        # TODO: Check locally cached flag for RockBLOCK has_messages status.
+        # This is a no-op right now because we have not implemented the ring
+        # line.
+        has_messages = True
+        if has_messages:
+            try:
+                self._try_to_get_messages()
+            except Exception as err:
+                print('Error: failed to get messages: %s' % err)
+
+        try:
+            mailboxes.accept_all_inbox_messages()
+        except Exception as err:
+            print('Error: failed to check for messages: %s' % err)
+
+
+    def _try_to_get_messages(self):
+        # We get calls to rockBlockRxReceived during the call below for any
+        # messages that were waiting for us.
+        self.rockblock.messageCheck()
+
+
+    def rockBlockRxReceived(self, _mtmsn, data):
+        _ = self
+        mailboxes.save_message_to_inbox(data)
+
+
+    def check_outbox(self):
+        outbox = mailboxes.read_outbox()
+
+        for msg in outbox:
+            self._send_message(msg)
+
+
+    def _send_message(self, msg):
+        try:
+            self._try_to_send_message(msg)
+            mailboxes.remove_from_outbox(msg['filename'])
+        except Exception as err:
+            print('Error: Tried to send message %s, but failed: %s' %
+                  (msg['filename'], err))
+            # TODO: We're currently just leaving the message, so we'll retry it
+            # forever.  Give up at some point?
+
+
+    def _try_to_send_message(self, msg):
+        print('RockBLOCK: sending %s' % msg)
+        # We get calls to rockBlockTxSuccess / rockBlockTxFailed during the call
+        # below.  We use self.send_status as a hack to unpick the callback.
+        self.send_status = None
+        self.rockblock.send_message(msg['recipient'], msg['body'])
+        assert self.send_status is not None
+        if not self.send_status:
+            print('RockBLOCK: sending %s failed.' % msg)
+            raise SendFailureException()
+
+
+    def rockBlockTxFailed(self):
+        self.send_status = False
+
+
+    def rockBlockTxSuccess(self, momsn):
+        print('RockBLOCK: TxSuccess.  Message ID: %s' % momsn)
+        self.send_status = True

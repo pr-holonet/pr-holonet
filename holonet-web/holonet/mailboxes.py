@@ -8,8 +8,7 @@ from enum import Enum
 from .utils import mkdir_p, timestamp_filename, utcnow_str
 
 
-# MAILBOXES_ROOT = '/var/opt/pr-holonet/mailboxes'
-MAILBOXES_ROOT = '/Users/ewan/pr-holonet/mailboxes'
+MAILBOXES_ROOT = '/var/opt/pr-holonet/mailboxes'
 
 
 class MailboxKind(Enum):  # pylint: disable=too-few-public-methods

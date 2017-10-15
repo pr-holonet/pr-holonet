@@ -94,11 +94,13 @@ class QueueManager(rockBlock.rockBlockProtocol):
     def _try_to_get_messages(self):
         # We get calls to rockBlockRxReceived during the call below for any
         # messages that were waiting for us.
+        print("Checking for messages")
         self.rockblock.messageCheck()
 
 
     def rockBlockRxReceived(self, _mtmsn, data):
         _ = self
+        print("Received %s" % data)
         mailboxes.save_message_to_inbox(data)
 
 
@@ -111,8 +113,10 @@ class QueueManager(rockBlock.rockBlockProtocol):
 
     def _send_message(self, msg):
         try:
+            print("Trying to send %s" % msg)
             self._try_to_send_message(msg)
             mailboxes.remove_from_outbox(msg['filename'])
+            print("Successfully sent and removed %s" % msg)
         except Exception as err:
             print('Error: Tried to send message %s, but failed: %s' %
                   (msg['filename'], err))
@@ -140,3 +144,10 @@ class QueueManager(rockBlock.rockBlockProtocol):
     def rockBlockTxSuccess(self, momsn):
         print('RockBLOCK: TxSuccess.  Message ID: %s' % momsn)
         self.send_status = True
+
+
+    def rockBlockRxStarted(self):
+        print("Rxstarted")
+
+    def rockBlockRxFailed(self):
+        print("RxFailed")

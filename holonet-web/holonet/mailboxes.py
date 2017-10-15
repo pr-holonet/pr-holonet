@@ -148,13 +148,13 @@ def accept_all_inbox_messages():
         msg_filename = msg['filename']
         msg_data = msg['data']
 
-        # TODO: Parse the received message
+        (sender, body) = msg_data.split(':', 1)
         now = utcnow_str()
         local_user = 'local'
-        sender = 'aperson'
+        sender = sender
         timestamp = now
         received_at = now
-        body = msg_data
+        body = body
 
         new_msg = _accept_message(local_user, sender, timestamp, received_at,
                                   body)

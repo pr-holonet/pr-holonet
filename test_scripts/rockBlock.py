@@ -580,7 +580,7 @@ class rockBlock(object):
         
         self.s.write(("AT+SBDRB\r").encode())
         
-        response = self.s.readline().strip().decode().replace("AT+SBDRB\r","").strip()
+        response = self.s.readline().strip().decode('ascii').replace("AT+SBDRB\r","").strip()
           
         if( response == "OK" ):
         

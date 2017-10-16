@@ -124,13 +124,13 @@ class RockBlock(object):
     def requestSignalStrength(self):
         self._ensureConnectionStatus()
 
-        command = "AT+CSQ"
+        command = b'AT+CSQ'
         self._send_command(command)
 
-        if self._read_next_line().decode() == command:
-            response = self._read_next_line().decode()
+        if self._read_next_line() == command:
+            response = self._read_next_line()
 
-            if response.find("+CSQ") >= 0:
+            if b'+CSQ' in response:
                 self._read_next_line()    # OK
                 self._read_next_line()    # BLANK
 
@@ -160,16 +160,16 @@ class RockBlock(object):
     def networkTime(self):
         self._ensureConnectionStatus()
 
-        command = "AT-MSSTM"
+        command = b'AT-MSSTM'
         self._send_command(command)
 
-        if self._read_next_line().decode() == command:
-            response = self._read_next_line().decode()
+        if self._read_next_line() == command:
+            response = self._read_next_line()
 
             self._read_next_line()   # BLANK
             self._read_next_line()   # OK
 
-            if "no network service" not in response:
+            if b'no network service' not in response:
                 utc = int(response[8:], 16)
                 utc = int((self.IRIDIUM_EPOCH + (utc * 90)) / 1000)
                 return utc
@@ -211,16 +211,16 @@ class RockBlock(object):
     def getSerialIdentifier(self):
         self._ensureConnectionStatus()
 
-        command = "AT+GSN"
+        command = b'AT+GSN'
         self._send_command(command)
 
-        if self._read_next_line().decode() == command:
-            response = self._read_next_line().decode()
-
+        if self._read_next_line() == command:
+            response = self._read_next_line()
             self._read_next_line()   # BLANK
             self._read_next_line()   # OK
+            return response.decode('ascii')
 
-            return response
+        return None
 
 
     # One-time initial setup function (Disables Flow Control)
@@ -308,38 +308,36 @@ class RockBlock(object):
     def _queueMessage(self, msg):
         self._ensureConnectionStatus()
 
-        if len(msg) > 340:
+        if isinstance(msg, str):
+            msg = msg.encode('utf-8')
+
+        msg_len = len(msg)
+        if msg_len > 340:
             print("sendMessageWithBytes bytes should be <= 340 bytes")
             return False
 
-        command = "AT+SBDWB=" + str(len(msg))
+        msg_len_bytes = bytes(str(msg_len), 'ascii')
+        command = b'AT+SBDWB=' + msg_len_bytes
         self._send_command(command)
 
-        if self._read_next_line().decode() == command:
-            if self._read_next_line().decode() == "READY":
-                checksum = 0
+        if (not self._read_next_line() == command or
+                not self._read_next_line() == b'READY'):
+            return False
 
-                for c in msg:
-                    checksum = checksum + ord(c)
+        checksum = 0
+        for b in msg:
+            checksum += b
 
-                self.s.write(str(msg).encode())
+        self.s.write(msg)
+        self.s.write(checksum.to_bytes(2, byteorder='big'))
 
-                self.s.write(bytes(chr(checksum >> 8), 'ascii'))
-                self.s.write(bytes(chr(checksum & 0xFF), 'ascii'))
+        self._read_next_line()   # BLANK
+        result = (self._read_next_line() == b'0')
 
-                self._read_next_line()   # BLANK
+        self._read_next_line()   # BLANK
+        self._read_next_line()   # OK
 
-                result = False
-
-                if self._read_next_line() == b"0":
-                    result = True
-
-                self._read_next_line()   # BLANK
-                self._read_next_line()   # OK
-
-                return result
-
-        return False
+        return result
 
 
     def _configurePort(self):
@@ -350,15 +348,11 @@ class RockBlock(object):
     def _enableEcho(self):
         self._ensureConnectionStatus()
 
-        command = "ATE1"
+        command = b'ATE1'
         self._send_command(command)
-
-        response = self._read_next_line().decode()
-
-        if response == command or response == "":
-            if self._read_next_line().decode() == "OK":
-                return True
-
+        response = self._read_next_line()
+        if response == command or response == b'':
+            return self._read_next_line() == b'OK'
         return False
 
 
@@ -383,61 +377,61 @@ class RockBlock(object):
 
             SESSION_ATTEMPTS -= 1
 
-            command = "AT+SBDIX"
+            command = b'AT+SBDIX'
             self._send_command(command)
 
-            if self._read_next_line().decode() == command:
+            if self._read_next_line() != command:
+                return False
 
-                response = self._read_next_line().decode()
+            response = self._read_next_line()
+            if not response.startswith(b'+SBDIX: '):
+                return False
 
-                if response.find("+SBDIX:") >= 0:
-                    self.s.readline()   # BLANK
-                    self.s.readline()   # OK
+            self.s.readline()   # BLANK
+            self.s.readline()   # OK
 
-                    # +SBDIX:<MO status>,<MOMSN>,<MT status>,<MTMSN>,
-                    # <MT length>,<MTqueued>
-                    response = response.replace("+SBDIX: ", "")
-                    parts = response.split(",")
-                    moStatus = int(parts[0])
-                    moMsn = int(parts[1])
-                    mtStatus = int(parts[2])
-                    mtMsn = int(parts[3])
-                    mtLength = int(parts[4])
-                    mtQueued = int(parts[5])
+            # +SBDIX: <MO status>, <MOMSN>, <MT status>, <MTMSN>, <MT length>,
+            # <MTqueued>
+            response = response[len(b'+SBDIX: '):]
+            parts = response.split(b',')
+            if len(parts) != 6:
+                return False
+            (moStatus, moMsn, mtStatus, mtMsn, mtLength, mtQueued) = \
+                map(int, parts)
 
-                    # Mobile Originated
-                    if moStatus <= 4:
-                        self._clearMoBuffer()
+            # Mobile Originated
+            if moStatus <= 4:
+                self._clearMoBuffer()
 
-                        if (self.callback is not None and
-                                isinstance(self.callback.rockBlockTxSuccess,
-                                           collections.Callable)):
-                            self.callback.rockBlockTxSuccess(moMsn)
-                    else:
-                        if (self.callback is not None and
-                                isinstance(self.callback.rockBlockTxFailed,
-                                           collections.Callable)):
-                            self.callback.rockBlockTxFailed()
+                if (self.callback is not None and
+                        isinstance(self.callback.rockBlockTxSuccess,
+                                   collections.Callable)):
+                    self.callback.rockBlockTxSuccess(moMsn)
+            else:
+                if (self.callback is not None and
+                        isinstance(self.callback.rockBlockTxFailed,
+                                   collections.Callable)):
+                    self.callback.rockBlockTxFailed()
 
-                    if mtStatus == 1 and mtLength > 0:
-                        # SBD message successfully received from the GSS.
-                        self._processMtMessage(mtMsn)
+            if mtStatus == 1 and mtLength > 0:
+                # SBD message successfully received from the GSS.
+                self._processMtMessage(mtMsn)
 
-                    # AUTOGET NEXT MESSAGE
+            # AUTOGET NEXT MESSAGE
 
-                    if (self.callback is not None and
-                            isinstance(self.callback.rockBlockRxMessageQueue,
-                                       collections.Callable)):
-                        self.callback.rockBlockRxMessageQueue(mtQueued)
+            if (self.callback is not None and
+                    isinstance(self.callback.rockBlockRxMessageQueue,
+                               collections.Callable)):
+                self.callback.rockBlockRxMessageQueue(mtQueued)
 
-                    # There are additional MT messages to queued to download
-                    if mtQueued > 0 and self.autoSession:
-                        self._attemptSession()
+            # There are additional MT messages to queued to download
+            if mtQueued > 0 and self.autoSession:
+                self._attemptSession()
 
-                    if moStatus <= 4:
-                        return True
+            if moStatus <= 4:
+                return True
 
-        return False
+        assert False  # Unreachable, while (True) above.
 
 
     def _attemptConnection(self):
@@ -497,17 +491,16 @@ class RockBlock(object):
     def _processMtMessage(self, mtMsn):
         self._ensureConnectionStatus()
 
-        self._send_command("AT+SBDRB")
+        self._send_command(b'AT+SBDRB')
+        response = self._read_next_line().replace(b'AT+SBDRB\r', '').strip()
 
-        response = self._read_next_line().decode('ascii').replace("AT+SBDRB\r", "").strip()
-
-        if response == "OK":
+        if response == b'OK':
             print("No message content.. strange!")
 
             if (self.callback is not None and
                     isinstance(self.callback.rockBlockRxReceived,
                                collections.Callable)):
-                self.callback.rockBlockRxReceived(mtMsn, "")
+                self.callback.rockBlockRxReceived(mtMsn, b'')
         else:
             content = response[2:-2]
 
@@ -522,18 +515,20 @@ class RockBlock(object):
     def _isNetworkTimeValid(self):
         self._ensureConnectionStatus()
 
-        command = "AT-MSSTM"
+        command = b'AT-MSSTM'
         self._send_command(command)
 
-        if self._read_next_line().decode() == command:  # Echo
-            response = self._read_next_line().decode()
+        if self._read_next_line() != command:  # Echo
+            return False
 
-            if response.startswith("-MSSTM"):    # -MSSTM: a5cb42ad / no network service
-                self.s.readline()   # OK
-                self.s.readline()   # BLANK
+        response = self._read_next_line()
+        if response.startswith(b'-MSSTM'):
+            # -MSSTM: a5cb42ad / no network service
+            self.s.readline()   # OK
+            self.s.readline()   # BLANK
 
-                if len(response) == 16:
-                    return True
+            if len(response) == 16:
+                return True
 
         return False
 
@@ -541,16 +536,20 @@ class RockBlock(object):
     def _clearMoBuffer(self):
         self._ensureConnectionStatus()
 
-        command = "AT+SBDD0"
+        command = b'AT+SBDD0'
         self._send_command(command)
 
-        if self._read_next_line().decode() == command:
-            if self._read_next_line().decode() == "0":
-                self.s.readline()  # BLANK
-                if self._read_next_line().decode() == "OK":
-                    return True
+        if self._read_next_line() != command:
+            return False
 
-        return False
+        if self._read_next_line() != b'0':
+            return False
+
+        self.s.readline()  # BLANK
+        if self._read_next_line() != b'OK':
+            return False
+
+        return True
 
 
     def _send_and_ack_command(self, cmd):
@@ -564,15 +563,13 @@ class RockBlock(object):
 
 
     def _send_command(self, cmd):
-        if isinstance(cmd, str):
-            cmd = cmd.encode('ascii')
         self.s.write(cmd + b'\r')
 
 
     def _read_next_line(self):
         """Read the next line, and return it with the trailing newline
            stripped."""
-        return self.s.readline().rstrip(b'\n')
+        return self.s.readline().rstrip(b'\r')
 
 
     def _read_ack(self, cmd):

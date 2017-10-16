@@ -153,21 +153,19 @@ class QueueManager(rockblock.RockBlockProtocol):
 
         try:
             self._try_to_send_message(msg)
-            mailboxes.remove_from_outbox(msg['filename'])
-            _logger.debug('Successfully sent and removed %s.', msg['filename'])
+            mailboxes.remove_from_outbox(msg.filename)
+            _logger.debug('Successfully sent and removed %s.', msg.filename)
         except Exception as err:
             _logger.warning('Tried to send message %s, but failed: %s',
-                            msg['filename'], err)
+                            msg.filename, err)
             # TODO: We're currently just leaving the message, so we'll retry it
             # forever.  Give up at some point?
 
 
     def _try_to_send_message(self, msg):
-        _logger.debug('RockBLOCK: sending %s.', msg['filename'])
+        _logger.debug('RockBLOCK: sending %s.', msg.filename)
 
-        msg_str = msg['recipient'] + ":" + msg['body']
-        msg_bytes = msg_str.encode('utf-8')
-
+        msg_bytes = msg.to_bytes()
         # We get calls to rockBlockTxSuccess / rockBlockTxFailed during the call
         # below.  We use self.send_status as a hack to unpick the callback.
         self.send_status = None

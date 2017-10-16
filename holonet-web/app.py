@@ -75,8 +75,6 @@ def test():
 def thread(recipient):
     local_user = _get_local_user()
     messages = mailboxes.get_thread(local_user, recipient)
-    for msg in messages:
-        msg['arrow'] = ('&larr;' if msg['direction'] == 'in' else '&rarr;')
     return render_template('thread.html',
                            messages=messages,
                            recipient=recipient)

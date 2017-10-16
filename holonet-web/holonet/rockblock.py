@@ -168,6 +168,8 @@ class RockBlock(object):
 
 
     def sendMessage(self, msg):
+        assert isinstance(msg, bytes)
+
         self._ensureConnectionStatus()
 
         self._do_callback(RockBlockProtocol.rockBlockTxStarted)
@@ -264,9 +266,6 @@ class RockBlock(object):
 
     def _queueMessage(self, msg):
         self._ensureConnectionStatus()
-
-        if isinstance(msg, str):
-            msg = msg.encode('utf-8')
 
         msg_len = len(msg)
         if msg_len > 340:

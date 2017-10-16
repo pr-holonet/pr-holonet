@@ -6,6 +6,7 @@ import shutil
 
 from enum import Enum
 
+from .message import Message
 from .utils import mkdir_p, timestamp_filename, utcnow_str
 
 
@@ -53,21 +54,20 @@ def queue_message_send(local_user, recipient, body):
 
     now = utcnow_str()
 
-    message = {
-        'local_user': local_user,
-        'recipient': recipient,
-        'timestamp': now,
-        'body': body,
-    }
+    msg = Message()
+    msg.local_user = local_user
+    msg.recipient = recipient
+    msg.timestamp = now
+    msg.body = body
 
-    message_str = json.dumps(message)
+    msg_str = msg.to_json_str()
 
     fname = timestamp_filename(now, 'json')
     thread_path = os.path.join(threadbox_path, fname)
     outbox_path = os.path.join(outbox_path, fname)
 
-    _write_file(outbox_path, message_str)
-    _write_file(thread_path, message_str)
+    _write_file(outbox_path, msg_str)
+    _write_file(thread_path, msg_str)
 
 
 def read_outbox():
@@ -93,8 +93,8 @@ def _read_mailbox_sorted(mailbox_path, check_outbox=False):
         outbox_contents = _read_mailbox(outbox_path)
 
         for msg in messages.values():
-            if msg['filename'] in outbox_contents:
-                msg['not_yet_sent'] = True
+            if msg.filename in outbox_contents:
+                msg.not_yet_sent = True
 
     result = []
     for fname in sorted(messages.keys()):
@@ -105,7 +105,7 @@ def _read_mailbox_sorted(mailbox_path, check_outbox=False):
 def _read_mailbox(mailbox_path):
     """
     Returns: dict where the key is the filename for the message, and the
-    value is the message dict.
+    value is a Message instance.
     """
     if not os.path.exists(mailbox_path):
         return {}
@@ -118,12 +118,8 @@ def _read_mailbox(mailbox_path):
         for filename in filenames:
             path = os.path.join(mailbox_path, filename)
             try:
-                msg = _read_json(path)
-                if msg.get('recipient'):
-                    msg['direction'] = 'out'
-                else:
-                    msg['direction'] = 'in'
-                msg['filename'] = filename
+                msg = _read_message(path)
+                msg.filename = filename
                 result[filename] = msg
             except Exception as err:
                 _logger.error('Failed to read %s!  %s', path, err)
@@ -200,21 +196,20 @@ def read_inbox():
 def _accept_message(local_user, sender, timestamp, received_at, body):
     threadbox_path = _path_of_threadbox(local_user, sender)
 
-    message = {
-        'local_user': local_user,
-        'sender': sender,
-        'timestamp': timestamp,
-        'received_at': received_at,
-        'body': body,
-    }
+    msg = Message()
+    msg.local_user = local_user
+    msg.sender = sender
+    msg.timestamp = timestamp
+    msg.received_at = received_at
+    msg.body = body
 
-    message_str = json.dumps(message)
+    msg_str = msg.to_json_str()
 
     fname = '%s.json' % received_at
     thread_path = os.path.join(threadbox_path, fname)
-    _write_file(thread_path, message_str)
+    _write_file(thread_path, msg_str)
 
-    return message
+    return msg
 
 
 def _remove_from_mailbox(filename, kind):
@@ -229,6 +224,11 @@ def _remove_from_mailbox(filename, kind):
 def _read_bin(path):
     with open(path, 'r') as f:
         return f.read()
+
+
+def _read_message(path):
+    msg_json = _read_json(path)
+    return Message(msg_json)
 
 
 def _read_json(path):

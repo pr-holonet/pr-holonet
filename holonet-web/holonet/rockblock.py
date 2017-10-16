@@ -107,10 +107,7 @@ class RockBlock(object):
     # Ensure that the connection is still alive
     def ping(self):
         self._ensureConnectionStatus()
-
-        command = b'AT'
-        self._send_command(command)
-        return self._read_ack(command)
+        return self._send_and_ack_command(b'AT')
 
 
     # Handy function to check the connection is still alive, else throw an Exception
@@ -235,27 +232,19 @@ class RockBlock(object):
         self._ensureConnectionStatus()
 
         # Disable Flow Control
-        command = b'AT&K0'
-        self._send_command(command)
-        if not self._read_ack(command):
+        if not self._send_and_ack_command(b'AT&K0'):
             return False
 
         # Store Configuration into Profile0
-        command = b'AT&W0'
-        self._send_command(command)
-        if not self._read_ack(command):
+        if not self._send_and_ack_command(b'AT&W0'):
             return False
 
         # Use Profile0 as default
-        command = b'AT&Y0'
-        self._send_command(command)
-        if not self._read_ack(command):
+        if not self._send_and_ack_command(b'AT&Y0'):
             return False
 
         # Flush Memory
-        command = b'AT*F'
-        self._send_command(command)
-        if not self._read_ack(command):
+        if not self._send_and_ack_command(b'AT*F'):
             return False
 
         return True
@@ -375,18 +364,12 @@ class RockBlock(object):
 
     def _disableFlowControl(self):
         self._ensureConnectionStatus()
-
-        command = b'AT&K0'
-        self._send_command(command)
-        return self._read_ack(command)
+        return self._send_and_ack_command(b'AT&K0')
 
 
     def _disableRingAlerts(self):
         self._ensureConnectionStatus()
-
-        command = b'AT+SBDMTA=0'
-        self._send_command(command)
-        return self._read_ack(command)
+        return self._send_and_ack_command(b'AT+SBDMTA=0')
 
 
     def _attemptSession(self):
@@ -568,6 +551,12 @@ class RockBlock(object):
                     return True
 
         return False
+
+
+    def _send_and_ack_command(self, cmd):
+        self._send_command(cmd)
+        return self._read_ack(cmd)
+
 
     def _ensureConnectionStatus(self):
         if self.s is None or not self.s.isOpen():

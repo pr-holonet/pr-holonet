@@ -108,14 +108,10 @@ class RockBlock(object):
     def ping(self):
         self._ensureConnectionStatus()
 
-        command = "AT"
+        command = b'AT'
         self._send_command(command)
+        return self._read_ack(command)
 
-        if self._read_next_line().decode() == command:
-            if self._read_next_line().decode() == "OK":
-                return True
-
-        return False
 
     # Handy function to check the connection is still alive, else throw an Exception
     def pingception(self):
@@ -239,38 +235,30 @@ class RockBlock(object):
         self._ensureConnectionStatus()
 
         # Disable Flow Control
-        command = "AT&K0"
+        command = b'AT&K0'
         self._send_command(command)
+        if not self._read_ack(command):
+            return False
 
-        if (self._read_next_line().decode() == command and
-                self._read_next_line().decode() == "OK"):
+        # Store Configuration into Profile0
+        command = b'AT&W0'
+        self._send_command(command)
+        if not self._read_ack(command):
+            return False
 
-            # Store Configuration into Profile0
-            command = "AT&W0"
-            self._send_command(command)
+        # Use Profile0 as default
+        command = b'AT&Y0'
+        self._send_command(command)
+        if not self._read_ack(command):
+            return False
 
-            if (self._read_next_line().decode() == command and
-                    self._read_next_line().decode() == "OK"):
+        # Flush Memory
+        command = b'AT*F'
+        self._send_command(command)
+        if not self._read_ack(command):
+            return False
 
-                # Use Profile0 as default
-                command = "AT&Y0"
-                self._send_command(command)
-
-                if (self._read_next_line().decode() == command and
-                        self._read_next_line().decode() == "OK"):
-
-                    # Flush Memory
-                    command = "AT*F"
-                    self._send_command(command)
-
-                    if (self._read_next_line().decode() == command and
-                            self._read_next_line().decode() == "OK"):
-
-                        # self.close()
-
-                        return True
-
-        return False
+        return True
 
 
     def close(self):
@@ -388,27 +376,17 @@ class RockBlock(object):
     def _disableFlowControl(self):
         self._ensureConnectionStatus()
 
-        command = "AT&K0"
+        command = b'AT&K0'
         self._send_command(command)
-
-        if self._read_next_line().decode() == command:
-            if self._read_next_line().decode() == "OK":
-                return True
-
-        return False
+        return self._read_ack(command)
 
 
     def _disableRingAlerts(self):
         self._ensureConnectionStatus()
 
-        command = "AT+SBDMTA=0"
+        command = b'AT+SBDMTA=0'
         self._send_command(command)
-
-        if self._read_next_line().decode() == command:
-            if self._read_next_line().decode() == "OK":
-                return True
-
-        return False
+        return self._read_ack(command)
 
 
     def _attemptSession(self):
@@ -603,4 +581,13 @@ class RockBlock(object):
 
 
     def _read_next_line(self):
-        return self.s.readline().strip()
+        """Read the next line, and return it with the trailing newline
+           stripped."""
+        return self.s.readline().rstrip(b'\n')
+
+
+    def _read_ack(self, cmd):
+        """Read the next two lines, checking that the first is the given cmd
+           echoed back, and the next is b'OK'."""
+        return (self._read_next_line() == cmd and
+                self._read_next_line() == b'OK')

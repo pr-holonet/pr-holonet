@@ -1,5 +1,10 @@
 import json
 
+
+class MissingRecipientException(Exception):
+    pass
+
+
 class Message(object):  # pylint: disable=too-many-instance-attributes
     def __init__(self, json_dict=None):
         self.local_user = None
@@ -30,7 +35,10 @@ class Message(object):  # pylint: disable=too-many-instance-attributes
 
 
     def to_bytes(self):
-        msg_str = self.recipient + ":" + self.body
+        if not self.recipient:
+            raise MissingRecipientException()
+
+        msg_str = self.recipient + ":" + (self.body or '')
         return msg_str.encode('utf-8')
 
 

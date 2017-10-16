@@ -8,13 +8,24 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
+    # Note that this is an async request to refresh the signal strength.  If
+    # it does't get done by the time we've parsed the mailboxes (which is
+    # likely because we should be reading the SD card a lot faster than the
+    # serial line) then we'll be reporting the stale strength, not the new one.
+    # That's OK for now.
+    queue_manager.request_signal_strength()
+
     outbox = mailboxes.read_outbox()
     local_user = _get_local_user()
     recipients = mailboxes.list_recipients(local_user)
+    signal = queue_manager.last_known_signal_strength
+    rockblock_status = queue_manager.last_known_rockblock_status
 
     return render_template('index.html',
                            outbox=outbox,
-                           recipients=recipients)
+                           recipients=recipients,
+                           signal=signal,
+                           rockblock_status=rockblock_status)
 
 
 @app.route('/send_message', methods=['POST'])

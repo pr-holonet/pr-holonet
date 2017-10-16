@@ -80,28 +80,23 @@ class RockBlock(object):
         # messages to download.
         self.autoSession = True
 
-        try:
-            self.s = serial.Serial(self.portId, 19200, timeout=5)
+        self.s = serial.Serial(self.portId, 19200, timeout=5)
 
-            if self._configurePort():
-
-                self.ping()  # KEEP SACRIFICIAL!
-
-                self.s.timeout = 60
-
-                if self.ping():
-                    if (self.callback is not None and
-                            isinstance(self.callback.rockBlockConnected,
-                                       collections.Callable)):
-                        self.callback.rockBlockConnected()
-                        return
-
+        if not self._configurePort():
             self.close()
-            # raise RockBlockException()
-
-        except Exception:
-            print("__init__ failed!")
             raise RockBlockException()
+
+        self.ping()  # KEEP SACRIFICIAL!
+        self.s.timeout = 60
+
+        if not self.ping():
+            self.close()
+            raise RockBlockException()
+
+        if (self.callback is not None and
+                isinstance(self.callback.rockBlockConnected,
+                           collections.Callable)):
+            self.callback.rockBlockConnected()
 
 
     # Ensure that the connection is still alive

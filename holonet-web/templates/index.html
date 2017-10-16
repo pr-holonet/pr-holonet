@@ -14,6 +14,11 @@ src: url('static/NHLSabres.ttf');
 
 <br clear='both'>
 
+<h2>System health</h2>
+
+<p>RockBLOCK status: {{ rockblock_status }}.</p>
+<p>Signal strength: {{ signal }}.</p>
+
 {% if outbox %}
 <h2>Messages not yet sent</h2>
 {% for msg in outbox %}

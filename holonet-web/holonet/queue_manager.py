@@ -2,7 +2,7 @@ import asyncio
 import traceback
 from threading import Thread
 
-from holonet import mailboxes, rockBlock
+from holonet import mailboxes, rockblock
 
 
 _event_loop = None
@@ -47,9 +47,9 @@ def _get_messages_background():
     _queue_manager.get_messages()
 
 
-class QueueManager(rockBlock.rockBlockProtocol):
+class QueueManager(rockblock.RockBlockProtocol):
     def __init__(self):
-        self.rockblock = rockBlock.rockBlock("/dev/ttyUSB0", self)
+        self.rockblock = rockblock.RockBlock("/dev/ttyUSB0", self)
 
         self.send_status = None
 

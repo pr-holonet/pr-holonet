@@ -20,7 +20,7 @@ import time
 import serial
 
 
-class rockBlockProtocol(object):
+class RockBlockProtocol(object):
     def rockBlockConnected(self):
         pass
 
@@ -61,11 +61,11 @@ class rockBlockProtocol(object):
         pass
 
 
-class rockBlockException(Exception):
+class RockBlockException(Exception):
     pass
 
 
-class rockBlock(object):
+class RockBlock(object):
 
     # May 11, 2014, at 14:23:55 (This will be 're-epoched' every couple of
     # years!)
@@ -97,11 +97,11 @@ class rockBlock(object):
                         return
 
             self.close()
-            # raise rockBlockException()
+            # raise RockBlockException()
 
         except Exception:
             print("__init__ failed!")
-            raise rockBlockException()
+            raise RockBlockException()
 
 
     # Ensure that the connection is still alive
@@ -123,7 +123,7 @@ class rockBlock(object):
 
         self.s.timeout = 5
         if not self.ping():
-            raise rockBlockException()
+            raise RockBlockException()
 
         self.s.timeout = 60
 
@@ -593,7 +593,7 @@ class rockBlock(object):
 
     def _ensureConnectionStatus(self):
         if self.s is None or not self.s.isOpen():
-            raise rockBlockException()
+            raise RockBlockException()
 
 
     def _send_command(self, cmd):

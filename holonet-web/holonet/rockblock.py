@@ -109,13 +109,10 @@ class rockBlock(object):
         self._ensureConnectionStatus()
 
         command = "AT"
-
-        self.s.write((command + "\r").encode())
+        self._send_command(command)
 
         if self.s.readline().strip().decode() == command:
-
             if self.s.readline().strip().decode() == "OK":
-
                 return True
 
         return False
@@ -135,8 +132,7 @@ class rockBlock(object):
         self._ensureConnectionStatus()
 
         command = "AT+CSQ"
-
-        self.s.write((command + "\r").encode())
+        self._send_command(command)
 
         if self.s.readline().strip().decode() == command:
             response = self.s.readline().strip().decode()
@@ -172,11 +168,9 @@ class rockBlock(object):
         self._ensureConnectionStatus()
 
         command = "AT-MSSTM"
-
-        self.s.write((command + "\r").encode())
+        self._send_command(command)
 
         if self.s.readline().strip().decode() == command:
-
             response = self.s.readline().strip().decode()
 
             self.s.readline().strip()   # BLANK
@@ -225,8 +219,7 @@ class rockBlock(object):
         self._ensureConnectionStatus()
 
         command = "AT+GSN"
-
-        self.s.write((command + "\r").encode())
+        self._send_command(command)
 
         if self.s.readline().strip().decode() == command:
             response = self.s.readline().strip().decode()
@@ -247,32 +240,28 @@ class rockBlock(object):
 
         # Disable Flow Control
         command = "AT&K0"
-
-        self.s.write((command + "\r").encode())
+        self._send_command(command)
 
         if (self.s.readline().strip().decode() == command and
                 self.s.readline().strip().decode() == "OK"):
 
             # Store Configuration into Profile0
             command = "AT&W0"
-
-            self.s.write((command + "\r").encode())
+            self._send_command(command)
 
             if (self.s.readline().strip().decode() == command and
                     self.s.readline().strip().decode() == "OK"):
 
                 # Use Profile0 as default
                 command = "AT&Y0"
-
-                self.s.write((command + "\r").encode())
+                self._send_command(command)
 
                 if (self.s.readline().strip().decode() == command and
                         self.s.readline().strip().decode() == "OK"):
 
                     # Flush Memory
                     command = "AT*F"
-
-                    self.s.write((command + "\r").encode())
+                    self._send_command(command)
 
                     if (self.s.readline().strip().decode() == command and
                             self.s.readline().strip().decode() == "OK"):
@@ -347,11 +336,9 @@ class rockBlock(object):
             return False
 
         command = "AT+SBDWB=" + str(len(msg))
-
-        self.s.write((command + "\r").encode())
+        self._send_command(command)
 
         if self.s.readline().strip().decode() == command:
-
             if self.s.readline().strip().decode() == "READY":
                 checksum = 0
 
@@ -387,8 +374,7 @@ class rockBlock(object):
         self._ensureConnectionStatus()
 
         command = "ATE1"
-
-        self.s.write((command + "\r").encode())
+        self._send_command(command)
 
         response = self.s.readline().strip().decode()
 
@@ -403,8 +389,7 @@ class rockBlock(object):
         self._ensureConnectionStatus()
 
         command = "AT&K0"
-
-        self.s.write((command + "\r").encode())
+        self._send_command(command)
 
         if self.s.readline().strip().decode() == command:
             if self.s.readline().strip().decode() == "OK":
@@ -417,8 +402,7 @@ class rockBlock(object):
         self._ensureConnectionStatus()
 
         command = "AT+SBDMTA=0"
-
-        self.s.write((command + "\r").encode())
+        self._send_command(command)
 
         if self.s.readline().strip().decode() == command:
             if self.s.readline().strip().decode() == "OK":
@@ -439,8 +423,7 @@ class rockBlock(object):
             SESSION_ATTEMPTS -= 1
 
             command = "AT+SBDIX"
-
-            self.s.write((command + "\r").encode())
+            self._send_command(command)
 
             if self.s.readline().strip().decode() == command:
 
@@ -553,7 +536,7 @@ class rockBlock(object):
     def _processMtMessage(self, mtMsn):
         self._ensureConnectionStatus()
 
-        self.s.write(("AT+SBDRB\r").encode())
+        self._send_command("AT+SBDRB")
 
         response = self.s.readline().strip().decode('ascii').replace("AT+SBDRB\r", "").strip()
 
@@ -579,8 +562,7 @@ class rockBlock(object):
         self._ensureConnectionStatus()
 
         command = "AT-MSSTM"
-
-        self.s.write((command + "\r").encode())
+        self._send_command(command)
 
         if self.s.readline().strip().decode() == command:  # Echo
             response = self.s.readline().strip().decode()
@@ -599,8 +581,7 @@ class rockBlock(object):
         self._ensureConnectionStatus()
 
         command = "AT+SBDD0"
-
-        self.s.write((command + "\r").encode())
+        self._send_command(command)
 
         if self.s.readline().strip().decode() == command:
             if self.s.readline().strip().decode() == "0":
@@ -613,3 +594,9 @@ class rockBlock(object):
     def _ensureConnectionStatus(self):
         if self.s is None or not self.s.isOpen():
             raise rockBlockException()
+
+
+    def _send_command(self, cmd):
+        if isinstance(cmd, str):
+            cmd = cmd.encode('ascii')
+        self.s.write(cmd + b'\r')

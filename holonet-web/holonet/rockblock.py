@@ -99,21 +99,10 @@ class RockBlock(object):
         self._do_callback(RockBlockProtocol.rockBlockConnected)
 
 
-    # Ensure that the connection is still alive
     def ping(self):
+        """Ensure that the connection is still alive."""
         self._ensureConnectionStatus()
         return self._send_and_ack_command(b'AT')
-
-
-    # Handy function to check the connection is still alive, else throw an Exception
-    def pingception(self):
-        self._ensureConnectionStatus()
-
-        self.s.timeout = 5
-        if not self.ping():
-            raise RockBlockException()
-
-        self.s.timeout = 60
 
 
     def requestSignalStrength(self):
@@ -432,7 +421,8 @@ class RockBlock(object):
 
         if response == b'OK':
             _logger.warning('No message content.. strange!')
-            self._do_callback(RockBlockProtocol.rockBlockRxReceived, mtMsn, b'')
+            self._do_callback(RockBlockProtocol.rockBlockRxReceived,
+                              mtMsn, b'')
         else:
             content = response[2:-2]
             self._do_callback(RockBlockProtocol.rockBlockRxReceived, mtMsn,

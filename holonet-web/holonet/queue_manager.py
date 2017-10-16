@@ -166,8 +166,9 @@ class QueueManager(rockblock.RockBlockProtocol):
         _logger.debug('RockBLOCK: sending %s.', msg.filename)
 
         msg_bytes = msg.to_bytes()
-        # We get calls to rockBlockTxSuccess / rockBlockTxFailed during the call
-        # below.  We use self.send_status as a hack to unpick the callback.
+        # We get calls to rockBlockTxSuccess / rockBlockTxFailed during the
+        # call below.  We use self.send_status as a hack to unpick the
+        # callback.
         self.send_status = None
         self.rockblock.sendMessage(msg_bytes)
         assert self.send_status is not None

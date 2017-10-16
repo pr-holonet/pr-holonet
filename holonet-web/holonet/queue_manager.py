@@ -127,10 +127,14 @@ class QueueManager(rockblock.RockBlockProtocol):
 
     def _try_to_send_message(self, msg):
         print('RockBLOCK: sending %s' % msg)
+
+        msg_str = msg['recipient'] + ":" + msg['body']
+        msg_bytes = msg_str.encode('utf-8')
+
         # We get calls to rockBlockTxSuccess / rockBlockTxFailed during the call
         # below.  We use self.send_status as a hack to unpick the callback.
         self.send_status = None
-        self.rockblock.send_message(msg['recipient'], msg['body'])
+        self.rockblock.sendMessage(msg_bytes)
         assert self.send_status is not None
         if not self.send_status:
             print('RockBLOCK: sending %s failed.' % msg)

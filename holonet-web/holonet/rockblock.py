@@ -12,7 +12,6 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
-import collections
 import glob
 import sys
 import time
@@ -93,10 +92,7 @@ class RockBlock(object):
             self.close()
             raise RockBlockException()
 
-        if (self.callback is not None and
-                isinstance(self.callback.rockBlockConnected,
-                           collections.Callable)):
-            self.callback.rockBlockConnected()
+        self._do_callback(RockBlockProtocol.rockBlockConnected)
 
 
     # Ensure that the connection is still alive
@@ -138,18 +134,13 @@ class RockBlock(object):
     def messageCheck(self):
         self._ensureConnectionStatus()
 
-        if (self.callback is not None and
-                isinstance(self.callback.rockBlockRxStarted,
-                           collections.Callable)):
-            self.callback.rockBlockRxStarted()
+        self._do_callback(RockBlockProtocol.rockBlockRxStarted)
 
         if self._attemptConnection() and self._attemptSession():
             return True
-        else:
-            if (self.callback is not None and
-                    isinstance(self.callback.rockBlockRxFailed,
-                               collections.Callable)):
-                self.callback.rockBlockRxFailed()
+
+        self._do_callback(RockBlockProtocol.rockBlockRxFailed)
+        return False
 
 
     def networkTime(self):
@@ -175,10 +166,7 @@ class RockBlock(object):
     def sendMessage(self, msg):
         self._ensureConnectionStatus()
 
-        if (self.callback is not None and
-                isinstance(self.callback.rockBlockTxStarted,
-                           collections.Callable)):
-            self.callback.rockBlockTxStarted()
+        self._do_callback(RockBlockProtocol.rockBlockTxStarted)
 
         if self._queueMessage(msg) and self._attemptConnection():
             SESSION_DELAY = 1
@@ -186,7 +174,6 @@ class RockBlock(object):
 
             while True:
                 SESSION_ATTEMPTS -= 1
-
                 if SESSION_ATTEMPTS == 0:
                     break
 
@@ -195,11 +182,7 @@ class RockBlock(object):
                 else:
                     time.sleep(SESSION_DELAY)
 
-        if (self.callback is not None and
-                isinstance(self.callback.rockBlockTxFailed,
-                           collections.Callable)):
-            self.callback.rockBlockTxFailed()
-
+        self._do_callback(RockBlockProtocol.rockBlockTxFailed)
         return False
 
 
@@ -372,16 +355,9 @@ class RockBlock(object):
             # Mobile Originated
             if moStatus <= 4:
                 self._clearMoBuffer()
-
-                if (self.callback is not None and
-                        isinstance(self.callback.rockBlockTxSuccess,
-                                   collections.Callable)):
-                    self.callback.rockBlockTxSuccess(moMsn)
+                self._do_callback(RockBlockProtocol.rockBlockTxSuccess, moMsn)
             else:
-                if (self.callback is not None and
-                        isinstance(self.callback.rockBlockTxFailed,
-                                   collections.Callable)):
-                    self.callback.rockBlockTxFailed()
+                self._do_callback(RockBlockProtocol.rockBlockTxFailed)
 
             if mtStatus == 1 and mtLength > 0:
                 # SBD message successfully received from the GSS.
@@ -389,10 +365,8 @@ class RockBlock(object):
 
             # AUTOGET NEXT MESSAGE
 
-            if (self.callback is not None and
-                    isinstance(self.callback.rockBlockRxMessageQueue,
-                               collections.Callable)):
-                self.callback.rockBlockRxMessageQueue(mtQueued)
+            self._do_callback(RockBlockProtocol.rockBlockRxMessageQueue,
+                              mtQueued)
 
             # There are additional MT messages to queued to download
             if mtQueued > 0 and self.autoSession:
@@ -417,10 +391,7 @@ class RockBlock(object):
         # Wait for valid Network Time
         while True:
             if TIME_ATTEMPTS == 0:
-                if (self.callback is not None and
-                        isinstance(self.callback.rockBlockSignalFail,
-                                   collections.Callable)):
-                    self.callback.rockBlockSignalFail()
+                self._do_callback(RockBlockProtocol.rockBlockSignalFail)
                 return False
 
             if self._isNetworkTimeValid():
@@ -436,21 +407,13 @@ class RockBlock(object):
             signal = self.requestSignalStrength()
 
             if SIGNAL_ATTEMPTS == 0 or signal < 0:
-                print("NO SIGNAL")
-
-                if (self.callback is not None and
-                        isinstance(self.callback.rockBlockSignalFail,
-                                   collections.Callable)):
-                    self.callback.rockBlockSignalFail()
+                self._do_callback(RockBlockProtocol.rockBlockSignalFail)
                 return False
 
-            self.callback.rockBlockSignalUpdate(signal)
+            self._do_callback(RockBlockProtocol.rockBlockSignalUpdate, signal)
 
             if signal >= SIGNAL_THRESHOLD:
-                if (self.callback is not None and
-                        isinstance(self.callback.rockBlockSignalPass,
-                                   collections.Callable)):
-                    self.callback.rockBlockSignalPass()
+                self._do_callback(RockBlockProtocol.rockBlockSignalPass)
                 return True
 
             SIGNAL_ATTEMPTS -= 1
@@ -466,19 +429,11 @@ class RockBlock(object):
 
         if response == b'OK':
             print("No message content.. strange!")
-
-            if (self.callback is not None and
-                    isinstance(self.callback.rockBlockRxReceived,
-                               collections.Callable)):
-                self.callback.rockBlockRxReceived(mtMsn, b'')
+            self._do_callback(RockBlockProtocol.rockBlockRxReceived, mtMsn, b'')
         else:
             content = response[2:-2]
-
-            if (self.callback is not None and
-                    isinstance(self.callback.rockBlockRxReceived,
-                               collections.Callable)):
-                self.callback.rockBlockRxReceived(mtMsn, content)
-
+            self._do_callback(RockBlockProtocol.rockBlockRxReceived, mtMsn,
+                              content)
             self.s.readline()   # BLANK?
 
 
@@ -547,3 +502,10 @@ class RockBlock(object):
            echoed back, and the next is b'OK'."""
         return (self._read_next_line() == cmd and
                 self._read_next_line() == b'OK')
+
+
+    def _do_callback(self, f, *args):
+        cb = getattr(self.callback, f.__name__, None)
+        if cb is None:
+            return
+        cb(*args)

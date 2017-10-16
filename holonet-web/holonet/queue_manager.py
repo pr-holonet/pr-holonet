@@ -204,3 +204,7 @@ class QueueManager(rockblock.RockBlockProtocol):
         global last_known_signal_strength
         print('Signal strength updated: %s' % signal)
         last_known_signal_strength = signal
+
+
+    def rockBlockSignalFail(self):
+        print('RockBLOCK: No signal')

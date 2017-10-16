@@ -13,10 +13,14 @@
 #    limitations under the License.
 
 import glob
+import logging
 import sys
 import time
 
 import serial
+
+
+_logger = logging.getLogger('holonet.rockblock')
 
 
 class RockBlockProtocol(object):
@@ -266,7 +270,7 @@ class RockBlock(object):
 
         msg_len = len(msg)
         if msg_len > 340:
-            print("sendMessageWithBytes bytes should be <= 340 bytes")
+            _logger.warning('Message is longer than 340 bytes; rejecting it.')
             return False
 
         msg_len_bytes = bytes(str(msg_len), 'ascii')
@@ -428,7 +432,7 @@ class RockBlock(object):
         response = self._read_next_line().replace(b'AT+SBDRB\r', '').strip()
 
         if response == b'OK':
-            print("No message content.. strange!")
+            _logger.warning('No message content.. strange!')
             self._do_callback(RockBlockProtocol.rockBlockRxReceived, mtMsn, b'')
         else:
             content = response[2:-2]

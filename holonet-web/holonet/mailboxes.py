@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import os.path
 import shutil
@@ -9,6 +10,8 @@ from .utils import mkdir_p, timestamp_filename, utcnow_str
 
 
 MAILBOXES_ROOT = '/var/opt/pr-holonet/mailboxes'
+
+_logger = logging.getLogger('holonet.mailboxes')
 
 
 class MailboxKind(Enum):  # pylint: disable=too-few-public-methods
@@ -26,8 +29,8 @@ def list_recipients(local_user):
         return sorted([d for d in os.listdir(threadboxes_path)
                        if not d.startswith('.')])
     except Exception as err:
-        print('Error: failed to list %s even though it exists!  %s' %
-              (threadboxes_path, err))
+        _logger.error('Error: failed to list %s even though it exists!  %s',
+                      threadboxes_path, err)
         return []
 
 
@@ -41,7 +44,7 @@ def delete_thread(local_user, recipient):
     try:
         shutil.rmtree(threadbox_path)
     except Exception as err:
-        print('Cannot delete %s!  %s' % (threadbox_path, err))
+        _logger.error('Cannot delete %s!  %s', threadbox_path, err)
 
 
 def queue_message_send(local_user, recipient, body):
@@ -123,11 +126,11 @@ def _read_mailbox(mailbox_path):
                 msg['filename'] = filename
                 result[filename] = msg
             except Exception as err:
-                print('Error: failed to read %s!  %s' % (path, err))
+                _logger.error('Failed to read %s!  %s', path, err)
         return result
     except Exception as err:
-        print('Error: failed to list %s even though it exists!  %s' %
-              (mailbox_path, err))
+        _logger.error('Failed to list %s even though it exists!  %s',
+                      mailbox_path, err)
 
 
 def save_message_to_inbox(data):
@@ -186,11 +189,11 @@ def read_inbox():
                     'data': data,
                 })
             except Exception as err:
-                print('Error: failed to read %s!  %s' % (path, err))
+                _logger.error('Failed to read %s!  %s', path, err)
         return result
     except Exception as err:
-        print('Error: failed to list %s even though it exists!  %s' %
-              (inbox_path, err))
+        _logger.error('Failed to list %s even though it exists!  %s',
+                      inbox_path, err)
         return []
 
 
@@ -220,7 +223,7 @@ def _remove_from_mailbox(filename, kind):
     try:
         os.remove(path)
     except Exception as err:
-        print('Error: failed to remove %s!  %s' % (path, err))
+        _logger.error('Failed to remove %s!  %s', path, err)
 
 
 def _read_bin(path):

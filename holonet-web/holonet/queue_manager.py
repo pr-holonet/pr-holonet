@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import traceback
 from threading import Thread
 
@@ -10,6 +11,8 @@ from holonet import mailboxes, rockblock
 last_known_signal_strength = 0
 last_known_rockblock_status = 'Unknown'
 rockblock_serial_identifier = None
+
+_logger = logging.getLogger('holonet.queue_manager')
 
 _event_loop = None
 _thread = None
@@ -58,13 +61,14 @@ class QueueManager(rockblock.RockBlockProtocol):
             self.rockblock = rockblock.RockBlock("/dev/ttyUSB0", self)
             last_known_rockblock_status = 'Installed'
         except serialutil.SerialException as err:
-            print('Error: Failed to initialize RockBLOCK!  Will muddle on '
-                  'without it.  %s' % err)
+            _logger.error(
+                'Failed to initialize RockBLOCK!  Will muddle on without it.  '
+                '%s', err)
             self.rockblock = None
             last_known_rockblock_status = 'Missing'
         except:  # pylint: disable=bare-except
-            print('Error: Failed to initialize RockBLOCK!  Will muddle on '
-                  'without it.')
+            _logger.error(
+                'Failed to initialize RockBLOCK!  Will muddle on without it.')
             traceback.print_exc()
             self.rockblock = None
             last_known_rockblock_status = 'Broken'
@@ -72,14 +76,15 @@ class QueueManager(rockblock.RockBlockProtocol):
 
     def get_serial_identifier(self):
         if self.rockblock is None:
-            print('Cannot get serial identifier: we have no RockBLOCK')
+            _logger.debug(
+                'Cannot get serial identifier: we have no RockBLOCK.')
             return
 
         try:
             global rockblock_serial_identifier
             rockblock_serial_identifier = self.rockblock.getSerialIdentifier()
         except Exception as err:
-            print('Error: failed to get RockBLOCK serial identifier: %s' % err)
+            _logger.error('Failed to get RockBLOCK serial identifier: %s', err)
             traceback.print_exc()
 
 
@@ -87,15 +92,14 @@ class QueueManager(rockblock.RockBlockProtocol):
         try:
             self._try_to_check_for_messages()
         except Exception as err:
-            print('Error: failed to check for messages: %s' % err)
-            traceback.print_exc()
+            _logger.warning('Failed to check for messages: %s', err)
 
     def _try_to_check_for_messages(self):
         # TODO: Call RockBLOCK to check whether any messages are pending, and
         # update the locally cached flag for the has_messages status.
         # This is a no-op right now because we have not implemented the ring
         # line.
-        print('RockBLOCK: would check for pending messages')
+        _logger.debug('RockBLOCK: would check for pending messages.')
         _ = self
         # time.sleep(4)
 
@@ -110,60 +114,56 @@ class QueueManager(rockblock.RockBlockProtocol):
             try:
                 self._try_to_get_messages()
             except Exception as err:
-                print('Error: failed to get messages: %s' % err)
-                traceback.print_exc()
+                _logger.warning('Failed to get messages: %s', err)
 
         try:
             mailboxes.accept_all_inbox_messages()
         except Exception as err:
-            print('Error: failed to check for messages: %s' % err)
+            _logger.error('Failed to accept messages: %s', err)
             traceback.print_exc()
 
 
     def _try_to_get_messages(self):
         if self.rockblock is None:
-            print('Cannot get messages: we have no RockBLOCK')
+            _logger.debug('Cannot get messages: we have no RockBLOCK.')
             return
 
         # We get calls to rockBlockRxReceived during the call below for any
         # messages that were waiting for us.
-        print("Checking for messages")
+        _logger.debug('Checking for messages.')
         self.rockblock.messageCheck()
 
 
     def rockBlockRxReceived(self, _mtmsn, data):
         _ = self
-        print("Received %s" % data)
+        _logger.debug('RockBLOCK: Received data of length %s.', len(data))
         mailboxes.save_message_to_inbox(data)
 
 
     def check_outbox(self):
         outbox = mailboxes.read_outbox()
-
         for msg in outbox:
             self._send_message(msg)
 
 
     def _send_message(self, msg):
+        if self.rockblock is None:
+            _logger.info('Cannot send message: we have no RockBLOCK.  %s', msg)
+            return
+
         try:
-            print("Trying to send %s" % msg)
             self._try_to_send_message(msg)
             mailboxes.remove_from_outbox(msg['filename'])
-            print("Successfully sent and removed %s" % msg)
+            _logger.debug('Successfully sent and removed %s.', msg['filename'])
         except Exception as err:
-            print('Error: Tried to send message %s, but failed: %s' %
-                  (msg['filename'], err))
-            traceback.print_exc()
+            _logger.warning('Tried to send message %s, but failed: %s',
+                            msg['filename'], err)
             # TODO: We're currently just leaving the message, so we'll retry it
             # forever.  Give up at some point?
 
 
     def _try_to_send_message(self, msg):
-        if self.rockblock is None:
-            print('Cannot send message: we have no RockBLOCK.  %s' % msg)
-            raise SendFailureException()
-
-        print('RockBLOCK: sending %s' % msg)
+        _logger.debug('RockBLOCK: sending %s.', msg['filename'])
 
         msg_str = msg['recipient'] + ":" + msg['body']
         msg_bytes = msg_str.encode('utf-8')
@@ -174,7 +174,7 @@ class QueueManager(rockblock.RockBlockProtocol):
         self.rockblock.sendMessage(msg_bytes)
         assert self.send_status is not None
         if not self.send_status:
-            print('RockBLOCK: sending %s failed.' % msg)
+            _logger.warning('RockBLOCK: sending %s failed.', msg)
             raise SendFailureException()
 
 
@@ -183,20 +183,21 @@ class QueueManager(rockblock.RockBlockProtocol):
 
 
     def rockBlockTxSuccess(self, momsn):
-        print('RockBLOCK: TxSuccess.  Message ID: %s' % momsn)
+        _logger.debug('RockBLOCK: TxSuccess.  Message ID: %s.', momsn)
         self.send_status = True
 
 
     def rockBlockRxStarted(self):
-        print("Rxstarted")
+        _logger.debug('RockBLOCK: RxStarted.')
 
     def rockBlockRxFailed(self):
-        print("RxFailed")
+        _logger.debug('RockBLOCK: RxFailed.')
 
 
     def request_signal_strength(self):
         if self.rockblock is None:
-            print('Cannot request signal strength: we have no RockBLOCK')
+            _logger.debug(
+                'Cannot request signal strength: we have no RockBLOCK.')
             return
 
         # This triggers a callback to rockBlockSignalUpdate (assuming it
@@ -205,9 +206,9 @@ class QueueManager(rockblock.RockBlockProtocol):
 
     def rockBlockSignalUpdate(self, signal):
         global last_known_signal_strength
-        print('Signal strength updated: %s' % signal)
+        _logger.info('RockBLOCK: signal strength = %s.', signal)
         last_known_signal_strength = signal
 
 
     def rockBlockSignalFail(self):
-        print('RockBLOCK: No signal')
+        _logger.warning('RockBLOCK: No signal.')

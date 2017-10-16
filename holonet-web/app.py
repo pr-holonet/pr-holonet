@@ -1,3 +1,5 @@
+import logging
+
 from flask import Flask, redirect, render_template, request, url_for
 
 from holonet import mailboxes, queue_manager
@@ -104,5 +106,10 @@ def _response_return_to_previous():
 
 
 if __name__ == '__main__':
+    holonet_logger = logging.getLogger('holonet')
+    holonet_logger.setLevel(logging.DEBUG)
+    for handler in app.logger.handlers:
+        holonet_logger.addHandler(handler)
+
     queue_manager.start()
     app.run(debug=True, host='0.0.0.0')

@@ -111,8 +111,8 @@ class RockBlock(object):
         command = "AT"
         self._send_command(command)
 
-        if self.s.readline().strip().decode() == command:
-            if self.s.readline().strip().decode() == "OK":
+        if self._read_next_line().decode() == command:
+            if self._read_next_line().decode() == "OK":
                 return True
 
         return False
@@ -134,12 +134,12 @@ class RockBlock(object):
         command = "AT+CSQ"
         self._send_command(command)
 
-        if self.s.readline().strip().decode() == command:
-            response = self.s.readline().strip().decode()
+        if self._read_next_line().decode() == command:
+            response = self._read_next_line().decode()
 
             if response.find("+CSQ") >= 0:
-                self.s.readline().strip()    # OK
-                self.s.readline().strip()    # BLANK
+                self._read_next_line()    # OK
+                self._read_next_line()    # BLANK
 
                 if len(response) == 6:
                     return int(response[5])
@@ -170,11 +170,11 @@ class RockBlock(object):
         command = "AT-MSSTM"
         self._send_command(command)
 
-        if self.s.readline().strip().decode() == command:
-            response = self.s.readline().strip().decode()
+        if self._read_next_line().decode() == command:
+            response = self._read_next_line().decode()
 
-            self.s.readline().strip()   # BLANK
-            self.s.readline().strip()   # OK
+            self._read_next_line()   # BLANK
+            self._read_next_line()   # OK
 
             if "no network service" not in response:
                 utc = int(response[8:], 16)
@@ -221,11 +221,11 @@ class RockBlock(object):
         command = "AT+GSN"
         self._send_command(command)
 
-        if self.s.readline().strip().decode() == command:
-            response = self.s.readline().strip().decode()
+        if self._read_next_line().decode() == command:
+            response = self._read_next_line().decode()
 
-            self.s.readline().strip()   # BLANK
-            self.s.readline().strip()   # OK
+            self._read_next_line()   # BLANK
+            self._read_next_line()   # OK
 
             return response
 
@@ -242,29 +242,29 @@ class RockBlock(object):
         command = "AT&K0"
         self._send_command(command)
 
-        if (self.s.readline().strip().decode() == command and
-                self.s.readline().strip().decode() == "OK"):
+        if (self._read_next_line().decode() == command and
+                self._read_next_line().decode() == "OK"):
 
             # Store Configuration into Profile0
             command = "AT&W0"
             self._send_command(command)
 
-            if (self.s.readline().strip().decode() == command and
-                    self.s.readline().strip().decode() == "OK"):
+            if (self._read_next_line().decode() == command and
+                    self._read_next_line().decode() == "OK"):
 
                 # Use Profile0 as default
                 command = "AT&Y0"
                 self._send_command(command)
 
-                if (self.s.readline().strip().decode() == command and
-                        self.s.readline().strip().decode() == "OK"):
+                if (self._read_next_line().decode() == command and
+                        self._read_next_line().decode() == "OK"):
 
                     # Flush Memory
                     command = "AT*F"
                     self._send_command(command)
 
-                    if (self.s.readline().strip().decode() == command and
-                            self.s.readline().strip().decode() == "OK"):
+                    if (self._read_next_line().decode() == command and
+                            self._read_next_line().decode() == "OK"):
 
                         # self.close()
 
@@ -338,8 +338,8 @@ class RockBlock(object):
         command = "AT+SBDWB=" + str(len(msg))
         self._send_command(command)
 
-        if self.s.readline().strip().decode() == command:
-            if self.s.readline().strip().decode() == "READY":
+        if self._read_next_line().decode() == command:
+            if self._read_next_line().decode() == "READY":
                 checksum = 0
 
                 for c in msg:
@@ -350,15 +350,15 @@ class RockBlock(object):
                 self.s.write(bytes(chr(checksum >> 8), 'ascii'))
                 self.s.write(bytes(chr(checksum & 0xFF), 'ascii'))
 
-                self.s.readline().strip()   # BLANK
+                self._read_next_line()   # BLANK
 
                 result = False
 
-                if self.s.readline().strip() == b"0":
+                if self._read_next_line() == b"0":
                     result = True
 
-                self.s.readline().strip()   # BLANK
-                self.s.readline().strip()   # OK
+                self._read_next_line()   # BLANK
+                self._read_next_line()   # OK
 
                 return result
 
@@ -376,10 +376,10 @@ class RockBlock(object):
         command = "ATE1"
         self._send_command(command)
 
-        response = self.s.readline().strip().decode()
+        response = self._read_next_line().decode()
 
         if response == command or response == "":
-            if self.s.readline().strip().decode() == "OK":
+            if self._read_next_line().decode() == "OK":
                 return True
 
         return False
@@ -391,8 +391,8 @@ class RockBlock(object):
         command = "AT&K0"
         self._send_command(command)
 
-        if self.s.readline().strip().decode() == command:
-            if self.s.readline().strip().decode() == "OK":
+        if self._read_next_line().decode() == command:
+            if self._read_next_line().decode() == "OK":
                 return True
 
         return False
@@ -404,8 +404,8 @@ class RockBlock(object):
         command = "AT+SBDMTA=0"
         self._send_command(command)
 
-        if self.s.readline().strip().decode() == command:
-            if self.s.readline().strip().decode() == "OK":
+        if self._read_next_line().decode() == command:
+            if self._read_next_line().decode() == "OK":
                 return True
 
         return False
@@ -425,9 +425,9 @@ class RockBlock(object):
             command = "AT+SBDIX"
             self._send_command(command)
 
-            if self.s.readline().strip().decode() == command:
+            if self._read_next_line().decode() == command:
 
-                response = self.s.readline().strip().decode()
+                response = self._read_next_line().decode()
 
                 if response.find("+SBDIX:") >= 0:
                     self.s.readline()   # BLANK
@@ -538,7 +538,7 @@ class RockBlock(object):
 
         self._send_command("AT+SBDRB")
 
-        response = self.s.readline().strip().decode('ascii').replace("AT+SBDRB\r", "").strip()
+        response = self._read_next_line().decode('ascii').replace("AT+SBDRB\r", "").strip()
 
         if response == "OK":
             print("No message content.. strange!")
@@ -564,8 +564,8 @@ class RockBlock(object):
         command = "AT-MSSTM"
         self._send_command(command)
 
-        if self.s.readline().strip().decode() == command:  # Echo
-            response = self.s.readline().strip().decode()
+        if self._read_next_line().decode() == command:  # Echo
+            response = self._read_next_line().decode()
 
             if response.startswith("-MSSTM"):    # -MSSTM: a5cb42ad / no network service
                 self.s.readline()   # OK
@@ -583,10 +583,10 @@ class RockBlock(object):
         command = "AT+SBDD0"
         self._send_command(command)
 
-        if self.s.readline().strip().decode() == command:
-            if self.s.readline().strip().decode() == "0":
+        if self._read_next_line().decode() == command:
+            if self._read_next_line().decode() == "0":
                 self.s.readline()  # BLANK
-                if self.s.readline().strip().decode() == "OK":
+                if self._read_next_line().decode() == "OK":
                     return True
 
         return False
@@ -600,3 +600,7 @@ class RockBlock(object):
         if isinstance(cmd, str):
             cmd = cmd.encode('ascii')
         self.s.write(cmd + b'\r')
+
+
+    def _read_next_line(self):
+        return self.s.readline().strip()

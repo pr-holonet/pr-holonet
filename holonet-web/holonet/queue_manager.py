@@ -34,28 +34,16 @@ def start():
 
 
 def check_for_messages():
-    _event_loop.call_soon_threadsafe(_check_for_messages_background)
-
-def _check_for_messages_background():
-    _queue_manager.check_for_messages()
+    _event_loop.call_soon_threadsafe(_queue_manager.check_for_messages)
 
 def check_outbox():
-    _event_loop.call_soon_threadsafe(_check_outbox_background)
-
-def _check_outbox_background():
-    _queue_manager.check_outbox()
+    _event_loop.call_soon_threadsafe(_queue_manager.check_outbox)
 
 def get_messages():
-    _event_loop.call_soon_threadsafe(_get_messages_background)
-
-def _get_messages_background():
-    _queue_manager.get_messages()
+    _event_loop.call_soon_threadsafe(_queue_manager.get_messages)
 
 def request_signal_strength():
-    _event_loop.call_soon_threadsafe(_request_signal_strength_background)
-
-def _request_signal_strength_background():
-    _queue_manager.request_signal_strength()
+    _event_loop.call_soon_threadsafe(_queue_manager.request_signal_strength)
 
 
 class QueueManager(rockblock.RockBlockProtocol):

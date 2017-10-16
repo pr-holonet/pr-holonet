@@ -9,6 +9,7 @@ from holonet import mailboxes, rockblock
 
 last_known_signal_strength = 0
 last_known_rockblock_status = 'Unknown'
+rockblock_serial_identifier = None
 
 _event_loop = None
 _thread = None
@@ -31,6 +32,7 @@ def start():
     _thread.daemon = True
     _thread.start()
 
+    _event_loop.call_soon_threadsafe(_queue_manager.get_serial_identifier)
 
 
 def check_for_messages():
@@ -66,6 +68,19 @@ class QueueManager(rockblock.RockBlockProtocol):
             traceback.print_exc()
             self.rockblock = None
             last_known_rockblock_status = 'Broken'
+
+
+    def get_serial_identifier(self):
+        if self.rockblock is None:
+            print('Cannot get serial identifier: we have no RockBLOCK')
+            return
+
+        try:
+            global rockblock_serial_identifier
+            rockblock_serial_identifier = self.rockblock.getSerialIdentifier()
+        except Exception as err:
+            print('Error: failed to get RockBLOCK serial identifier: %s' % err)
+            traceback.print_exc()
 
 
     def check_for_messages(self):

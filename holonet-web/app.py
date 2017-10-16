@@ -19,12 +19,14 @@ def index():
     local_user = _get_local_user()
     recipients = mailboxes.list_recipients(local_user)
     signal = queue_manager.last_known_signal_strength
+    rockblock_serial = queue_manager.rockblock_serial_identifier or "Unknown"
     rockblock_status = queue_manager.last_known_rockblock_status
 
     return render_template('index.html',
                            outbox=outbox,
                            recipients=recipients,
                            signal=signal,
+                           rockblock_serial=rockblock_serial,
                            rockblock_status=rockblock_status)
 
 

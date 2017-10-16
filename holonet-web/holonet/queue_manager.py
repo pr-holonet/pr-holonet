@@ -212,3 +212,8 @@ class QueueManager(rockblock.RockBlockProtocol):
 
     def rockBlockSignalFail(self):
         _logger.warning('RockBLOCK: No signal.')
+
+    def rockBlockSignalPass(self):
+        _logger.info(
+            'RockBLOCK: signal is back.  Checking for outbound messages.')
+        check_outbox()

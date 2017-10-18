@@ -374,12 +374,17 @@ class RockBlock(object):
 
             command = b'AT+SBDIX'
             self._send_command(command)
+            response = self._read_next_line()
 
-            if self._read_next_line() != command:
+            if response != command:
+                _logger.error('Got bad response when creating session: %s',
+                              response)
                 return False
 
             response = self._read_next_line()
             if not response.startswith(b'+SBDIX: '):
+                _logger.error('Got bad response when creating session: %s',
+                              response)
                 return False
 
             self.s.readline()   # BLANK
@@ -390,6 +395,8 @@ class RockBlock(object):
             response = response[len(b'+SBDIX: '):]
             parts = response.split(b',')
             if len(parts) != 6:
+                _logger.error('Got bad parts in response when creating '
+                              'session: %s / %s.', response, parts)
                 return False
             (moStatus, moMsn, mtStatus, mtMsn, mtLength, mtQueued) = \
                 map(int, parts)
@@ -399,10 +406,13 @@ class RockBlock(object):
                 self._clearMoBuffer()
                 self._do_callback(RockBlockProtocol.rockBlockTxSuccess, moMsn)
             else:
-                self._do_callback(RockBlockProtocol.rockBlockTxFailed, moStatus)
+                _logger.warning('Got moStatus %d', moStatus)
+                self._do_callback(RockBlockProtocol.rockBlockTxFailed,
+                                  moStatus)
 
             if mtStatus == 1 and mtLength > 0:
                 # SBD message successfully received from the GSS.
+                _logger.debug('Will process message %s', mtMsn)
                 self._processMtMessage(mtMsn)
 
             # AUTOGET NEXT MESSAGE

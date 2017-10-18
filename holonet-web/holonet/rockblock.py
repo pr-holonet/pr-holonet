@@ -487,7 +487,7 @@ class RockBlock(object):
     def _read_next_line(self):
         """Read the next line, and return it with the trailing newline
            stripped."""
-        return self.s.readline().rstrip(b'\r')
+        return self.s.readline().rstrip()
 
 
     def _read_ack(self, cmd):

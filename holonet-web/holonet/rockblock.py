@@ -57,7 +57,7 @@ class RockBlockProtocol(object):
     def rockBlockTxStarted(self):
         pass
 
-    def rockBlockTxFailed(self):
+    def rockBlockTxFailed(self, moStatus):
         pass
 
     def rockBlockTxSuccess(self, momsn):
@@ -177,7 +177,7 @@ class RockBlock(object):
                 else:
                     time.sleep(SESSION_DELAY)
 
-        self._do_callback(RockBlockProtocol.rockBlockTxFailed)
+        self._do_callback(RockBlockProtocol.rockBlockTxFailed, -1)
         return False
 
 
@@ -349,7 +349,7 @@ class RockBlock(object):
                 self._clearMoBuffer()
                 self._do_callback(RockBlockProtocol.rockBlockTxSuccess, moMsn)
             else:
-                self._do_callback(RockBlockProtocol.rockBlockTxFailed)
+                self._do_callback(RockBlockProtocol.rockBlockTxFailed, moStatus)
 
             if mtStatus == 1 and mtLength > 0:
                 # SBD message successfully received from the GSS.

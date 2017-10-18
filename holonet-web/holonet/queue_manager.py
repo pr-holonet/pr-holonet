@@ -10,6 +10,7 @@ from holonet import mailboxes, rockblock
 
 last_known_signal_strength = 0
 last_known_rockblock_status = 'Unknown'
+last_txfailed_mo_status = 0
 rockblock_serial_identifier = None
 
 _logger = logging.getLogger('holonet.queue_manager')
@@ -178,7 +179,9 @@ class QueueManager(rockblock.RockBlockProtocol):
             raise SendFailureException()
 
 
-    def rockBlockTxFailed(self):
+    def rockBlockTxFailed(self, moStatus):
+        global last_txfailed_mo_status
+        last_txfailed_mo_status = moStatus
         self.send_status = False
 
 

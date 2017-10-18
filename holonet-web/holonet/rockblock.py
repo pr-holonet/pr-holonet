@@ -344,7 +344,10 @@ class RockBlock(object):
         self._send_command(command)
         response = self._read_next_line()
         if response == command or response == b'':
-            return self._read_next_line() == b'OK'
+            response = self._read_next_line()
+            if response == b'OK':
+                return True
+        _logger.error('Failed to enable echo; got response %s', response)
         return False
 
 

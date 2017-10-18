@@ -108,14 +108,16 @@ class RockBlock(object):
     def _wait_for_network_time(self):
         retries = 0
         while True:
-            if retries == TIME_ATTEMPTS:
-                self._do_callback(RockBlockProtocol.rockBlockSignalUpdate, 0)
-                return False
-
             if self._isNetworkTimeValid():
                 return True
 
             retries += 1
+            if retries == TIME_ATTEMPTS:
+                _logger.warning('Failed to get network time after %d retries; '
+                                'giving up.', retries)
+                self._do_callback(RockBlockProtocol.rockBlockSignalUpdate, 0)
+                return False
+
             _logger.debug('Failed to get network time after try %d; '
                           'will retry after %d secs.', retries, TIME_DELAY)
             time.sleep(TIME_DELAY)
@@ -125,14 +127,15 @@ class RockBlock(object):
     def wait_for_good_signal(self):
         retries = 0
         while True:
-            if retries == SIGNAL_ATTEMPTS:
-                return False
-
             signal = self._requestSignalStrength()
             if signal >= SIGNAL_THRESHOLD:
                 return True
 
             retries += 1
+            if retries == SIGNAL_ATTEMPTS:
+                _logger.warning('Failed to get good signal after %d retries; '
+                                'giving up.', retries)
+                return False
 
             _logger.debug('Failed to get good signal after try %d; '
                           'will retry after %d secs.', retries, RESCAN_DELAY)

@@ -20,6 +20,12 @@ import time
 import serial
 
 
+TIME_ATTEMPTS = 20
+TIME_DELAY = 1
+SIGNAL_ATTEMPTS = 10
+RESCAN_DELAY = 10
+SIGNAL_THRESHOLD = 2
+
 _logger = logging.getLogger('holonet.rockblock')
 
 
@@ -32,12 +38,6 @@ class RockBlockProtocol(object):
 
     # SIGNAL
     def rockBlockSignalUpdate(self, signal):
-        pass
-
-    def rockBlockSignalPass(self):
-        pass
-
-    def rockBlockSignalFail(self):
         pass
 
     # MT
@@ -105,23 +105,70 @@ class RockBlock(object):
         return self._send_and_ack_command(b'AT')
 
 
-    def requestSignalStrength(self):
+    def _wait_for_network_time(self):
+        retries = 0
+        while True:
+            if retries == TIME_ATTEMPTS:
+                self._do_callback(RockBlockProtocol.rockBlockSignalUpdate, 0)
+                return False
+
+            if self._isNetworkTimeValid():
+                return True
+
+            retries += 1
+            _logger.debug('Failed to get network time after try %d; '
+                          'will retry after %d secs.', retries, TIME_DELAY)
+            time.sleep(TIME_DELAY)
+        assert False  # Unreachable.
+
+
+    def wait_for_good_signal(self):
+        retries = 0
+        while True:
+            if retries == SIGNAL_ATTEMPTS:
+                return False
+
+            signal = self._requestSignalStrength()
+            if signal >= SIGNAL_THRESHOLD:
+                return True
+
+            retries += 1
+
+            _logger.debug('Failed to get good signal after try %d; '
+                          'will retry after %d secs.', retries, RESCAN_DELAY)
+            time.sleep(RESCAN_DELAY)
+        assert False  # Unreachable.
+
+
+    def _requestSignalStrength(self):
+        signal = self._doRequestSignalStrength()
+        _logger.debug('Signal strength is %d.', signal)
+        self._do_callback(RockBlockProtocol.rockBlockSignalUpdate, signal)
+        return signal
+
+
+    def _doRequestSignalStrength(self):
         self._ensureConnectionStatus()
 
         command = b'AT+CSQ'
         self._send_command(command)
+        response = self._read_next_line()
 
-        if self._read_next_line() == command:
-            response = self._read_next_line()
+        if response != command:
+            _logger.error('Incorrect echo for %s: %s', command, response)
+            return -1
 
-            if b'+CSQ' in response:
-                self._read_next_line()    # OK
-                self._read_next_line()    # BLANK
+        response = self._read_next_line()
 
-                if len(response) == 6:
-                    return int(response[5])
+        if b'+CSQ' not in response or len(response) != 6:
+            _logger.error('Incorrect response to %s: %s', command, response)
+            return -1
 
-        return -1
+        self._read_next_line()    # BLANK
+        self._read_next_line()    # OK
+
+        result = response[5] - ord('0')
+        return result
 
 
     def messageCheck(self):
@@ -372,45 +419,7 @@ class RockBlock(object):
 
     def _attemptConnection(self):
         self._ensureConnectionStatus()
-
-        TIME_ATTEMPTS = 20
-        TIME_DELAY = 1
-
-        SIGNAL_ATTEMPTS = 10
-        RESCAN_DELAY = 10
-        SIGNAL_THRESHOLD = 2
-
-        # Wait for valid Network Time
-        while True:
-            if TIME_ATTEMPTS == 0:
-                self._do_callback(RockBlockProtocol.rockBlockSignalFail)
-                return False
-
-            if self._isNetworkTimeValid():
-                break
-
-            TIME_ATTEMPTS -= 1
-
-            time.sleep(TIME_DELAY)
-
-
-        # Wait for acceptable signal strength
-        while True:
-            signal = self.requestSignalStrength()
-
-            if SIGNAL_ATTEMPTS == 0 or signal < 0:
-                self._do_callback(RockBlockProtocol.rockBlockSignalFail)
-                return False
-
-            self._do_callback(RockBlockProtocol.rockBlockSignalUpdate, signal)
-
-            if signal >= SIGNAL_THRESHOLD:
-                self._do_callback(RockBlockProtocol.rockBlockSignalPass)
-                return True
-
-            SIGNAL_ATTEMPTS -= 1
-
-            time.sleep(RESCAN_DELAY)
+        return self._wait_for_network_time() and self.wait_for_good_signal()
 
 
     def _processMtMessage(self, mtMsn):

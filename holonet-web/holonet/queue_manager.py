@@ -8,6 +8,7 @@ from serial import serialutil
 from holonet import mailboxes, rockblock
 
 
+last_known_signal_status = False
 last_known_signal_strength = 0
 last_known_rockblock_status = 'Unknown'
 last_txfailed_mo_status = 0
@@ -205,18 +206,22 @@ class QueueManager(rockblock.RockBlockProtocol):
 
         # This triggers a callback to rockBlockSignalUpdate (assuming it
         # succeeds).
-        self.rockblock.requestSignalStrength()
+        self.rockblock.wait_for_good_signal()
 
     def rockBlockSignalUpdate(self, signal):
+        global last_known_signal_status
         global last_known_signal_strength
+
         _logger.info('RockBLOCK: signal strength = %s.', signal)
         last_known_signal_strength = signal
-
-
-    def rockBlockSignalFail(self):
-        _logger.warning('RockBLOCK: No signal.')
-
-    def rockBlockSignalPass(self):
-        _logger.info(
-            'RockBLOCK: signal is back.  Checking for outbound messages.')
-        check_outbox()
+        if signal >= rockblock.SIGNAL_THRESHOLD:
+            _logger.warning('RockBLOCK: No signal.')
+            last_known_signal_status = False
+        else:
+            last = last_known_signal_status
+            last_known_signal_status = True
+            if last:
+                return
+            _logger.debug(
+                'RockBLOCK: signal is back.  Checking for outbound messages.')
+            check_outbox()

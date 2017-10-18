@@ -25,12 +25,12 @@ class SendFailureException(Exception):
     pass
 
 
-def start():
+def start(device=None):
     global _event_loop
     global _thread
     global _queue_manager
 
-    _queue_manager = QueueManager()
+    _queue_manager = QueueManager(device=device)
 
     _event_loop = asyncio.new_event_loop()
     _thread = Thread(target=_event_loop.run_forever)
@@ -54,13 +54,23 @@ def request_signal_strength():
 
 
 class QueueManager(rockblock.RockBlockProtocol):
-    def __init__(self):
+    def __init__(self, device):
         global last_known_rockblock_status
 
         self.send_status = None
 
         try:
-            self.rockblock = rockblock.RockBlock("/dev/ttyUSB0", self)
+            if device is None:
+                devices = rockblock.RockBlock.listPorts()
+                if not devices:
+                    _logger.error(
+                        'Cannot find RockBLOCK (or any working serial '
+                        'connections)!  Will muddle on without it.')
+                    self.rockblock = None
+                    last_known_rockblock_status = 'Missing'
+                    return
+                device = devices[0]
+            self.rockblock = rockblock.RockBlock(device, self)
             last_known_rockblock_status = 'Installed'
         except serialutil.SerialException as err:
             _logger.error(

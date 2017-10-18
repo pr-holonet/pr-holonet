@@ -111,5 +111,5 @@ if __name__ == '__main__':
     for handler in app.logger.handlers:
         holonet_logger.addHandler(handler)
 
-    queue_manager.start()
+    queue_manager.start(app.config.get('ROCKBLOCK_DEVICE'))
     app.run(debug=True, host='0.0.0.0')

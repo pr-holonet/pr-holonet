@@ -2,12 +2,12 @@
 
 | Pi pin # | Pi pin desc        | RockBLOCK pin # | RockBLOCK pin desc  |
 |----------|--------------------|-----------------|---------------------|
-| 2        | 5V power           | 8               | Power               |
+| 2        | 5V power           | 8               | 5v In               |
 | 6        | Ground             | 7               | Ground              |
-| 8        | UART TX            | 2               | UART RX             |
-| 10       | UART RX            | 3               | UART TX             |
-| 12       | GPIO 18 (PCM\_CLK) |                 | RI (Ring Indicator) |
-| 14       | Ground             |                 |                     |
+| 8        | TXD0 (GPIO 14)     | 2               | RXC                 |
+| 10       | RXDO (GPIO 15)     | 3               | TXD                 |
+| 12       | GPIO 18 (PCM\_CLK) | 10              | RI (Ring Indicator) |
+| 14       | Ground             | 6               | Ground              |
 | 16       | GPIO 23            |                 |                     |
 
 ## holonet-web

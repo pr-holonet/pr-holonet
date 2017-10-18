@@ -25,7 +25,8 @@ thisdir=$(dirname $(readlink_f "$0"))
 
 if [ -d "$thisdir/../../.pyenv3"* ]
 then
-    env=$(ls "$thisdir/../../.pyenv3"* | head -1)
+    env=$(ls -d "$thisdir/../../.pyenv3"* | head -1)
+    export VIRTUAL_ENV_DISABLE_PROMPT=1
     . "$env/bin/activate"
 fi
 cd "$thisdir"

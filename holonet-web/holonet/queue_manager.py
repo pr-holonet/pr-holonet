@@ -115,6 +115,7 @@ class QueueManager(rockblock.RockBlockProtocol):
                 self._try_to_get_messages()
             except Exception as err:
                 _logger.warning('Failed to get messages: %s', err)
+                traceback.print_exc()
 
         try:
             mailboxes.accept_all_inbox_messages()

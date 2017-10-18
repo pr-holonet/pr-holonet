@@ -224,7 +224,7 @@ class QueueManager(rockblock.RockBlockProtocol):
 
         _logger.info('RockBLOCK: signal strength = %s.', signal)
         last_known_signal_strength = signal
-        if signal >= rockblock.SIGNAL_THRESHOLD:
+        if signal < rockblock.SIGNAL_THRESHOLD:
             _logger.warning('RockBLOCK: No signal.')
             last_known_signal_status = False
         else:

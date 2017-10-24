@@ -1,4 +1,5 @@
 import logging
+import os
 
 from flask import Flask, redirect, render_template, request, url_for
 
@@ -111,5 +112,6 @@ if __name__ == '__main__':
     for handler in app.logger.handlers:
         holonet_logger.addHandler(handler)
 
-    queue_manager.start(app.config.get('ROCKBLOCK_DEVICE'))
+    if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
+        queue_manager.start(app.config.get('ROCKBLOCK_DEVICE'))
     app.run(debug=True, host='0.0.0.0')

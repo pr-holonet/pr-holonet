@@ -85,7 +85,7 @@ class QueueManager(rockblock.RockBlockProtocol):
                 '%s', err)
             self.rockblock = None
             last_known_rockblock_status = 'Missing'
-        except:  # pylint: disable=bare-except
+        except:  # noqa pylint: disable=bare-except
             _logger.error(
                 'Failed to initialize RockBLOCK!  Will muddle on without it.')
             traceback.print_exc()

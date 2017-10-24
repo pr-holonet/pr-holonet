@@ -121,7 +121,7 @@ class RockBlock(object):
         GPIO.add_event_detect(RING_INDICATOR_PIN, GPIO.BOTH,
                               callback=self._ring_indicator_callback)
 
-    def _ring_indicator_callback(self):
+    def _ring_indicator_callback(self, _channel):
         status = bool(GPIO.input(RING_INDICATOR_PIN))
         self._do_callback(RockBlockProtocol.rockBlockRingIndicatorChanged,
                           status)

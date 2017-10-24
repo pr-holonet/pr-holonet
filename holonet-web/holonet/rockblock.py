@@ -365,7 +365,7 @@ class RockBlock(object):
 
     def _configurePort(self):
         return (self._enableEcho() and self._disableFlowControl and
-                self._disableRingAlerts() and self.ping())
+                self._enableRingAlerts() and self.ping())
 
 
     def _enableEcho(self):
@@ -387,9 +387,9 @@ class RockBlock(object):
         return self._send_and_ack_command(b'AT&K0')
 
 
-    def _disableRingAlerts(self):
+    def _enableRingAlerts(self):
         self._ensureConnectionStatus()
-        return self._send_and_ack_command(b'AT+SBDMTA=0')
+        return self._send_and_ack_command(b'AT+SBDMTA=1')
 
 
     def _attemptSession(self):

@@ -228,7 +228,8 @@ class QueueManager(rockblock.RockBlockProtocol):
         global last_known_signal_time
 
         now = datetime.utcnow()
-        if last_known_signal_time + timedelta(seconds=SIGNAL_CHECK_SECONDS):
+        then = last_known_signal_time + timedelta(seconds=SIGNAL_CHECK_SECONDS)
+        if then < now:
             last_known_signal_time = now
             self.request_signal_strength()
 

@@ -8,11 +8,9 @@ def setmode(_mode):
 
 def setup(_channel, _mode, pull_up_down):
     _ = pull_up_down
-    pass
 
 def add_event_detect(_channel, _mode, callback):
     _ = callback
-    pass
 
-def input(_channel):
+def input(_channel):  # pylint: disable=redefined-builtin
     return 0

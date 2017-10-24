@@ -57,6 +57,7 @@ def request_signal_strength():
 
 def _check_signal():
     _event_loop.call_soon_threadsafe(_queue_manager.check_signal)
+    _event_loop.call_later(SIGNAL_CHECK_SECONDS, _check_signal)
 
 
 class QueueManager(rockblock.RockBlockProtocol):

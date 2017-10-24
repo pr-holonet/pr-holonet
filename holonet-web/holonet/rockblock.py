@@ -18,6 +18,10 @@ import sys
 import time
 
 import serial
+try:
+    import RPi.GPIO as GPIO
+except ImportError:
+    pass
 
 
 TIME_ATTEMPTS = 20
@@ -25,6 +29,11 @@ TIME_DELAY = 1
 SIGNAL_ATTEMPTS = 10
 RESCAN_DELAY = 10
 SIGNAL_THRESHOLD = 2
+
+GPIO_MODE = GPIO.BOARD
+RING_INDICATOR_PIN = 12
+RING_INDICATOR_PUD = GPIO.PUD_DOWN
+
 
 _logger = logging.getLogger('holonet.rockblock')
 
@@ -63,6 +72,10 @@ class RockBlockProtocol(object):
     def rockBlockTxSuccess(self, momsn):
         pass
 
+    # RING INDICATOR
+    def rockBlockRingIndicatorChanged(self, status):
+        pass
+
 
 class RockBlockException(Exception):
     pass
@@ -96,7 +109,22 @@ class RockBlock(object):
             self.close()
             raise RockBlockException()
 
+        self._do_gpio_setup()
+
         self._do_callback(RockBlockProtocol.rockBlockConnected)
+
+
+    def _do_gpio_setup(self):
+        GPIO.setmode(GPIO_MODE)
+        GPIO.setup(RING_INDICATOR_PIN, GPIO.IN,
+                   pull_up_down=RING_INDICATOR_PUD)
+        GPIO.add_event_detect(RING_INDICATOR_PIN, GPIO.BOTH,
+                              callback=self._ring_indicator_callback)
+
+    def _ring_indicator_callback(self):
+        status = bool(GPIO.input(RING_INDICATOR_PIN))
+        self._do_callback(RockBlockProtocol.rockBlockRingIndicatorChanged,
+                          status)
 
 
     def ping(self):

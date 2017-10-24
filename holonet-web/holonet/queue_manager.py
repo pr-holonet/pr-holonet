@@ -40,9 +40,6 @@ def start(device=None):
     _event_loop.call_soon_threadsafe(_queue_manager.get_serial_identifier)
 
 
-def check_for_messages():
-    _event_loop.call_soon_threadsafe(_queue_manager.check_for_messages)
-
 def check_outbox():
     _event_loop.call_soon_threadsafe(_queue_manager.check_outbox)
 
@@ -100,34 +97,12 @@ class QueueManager(rockblock.RockBlockProtocol):
             traceback.print_exc()
 
 
-    def check_for_messages(self):
-        try:
-            self._try_to_check_for_messages()
-        except Exception as err:
-            _logger.warning('Failed to check for messages: %s', err)
-
-    def _try_to_check_for_messages(self):
-        # TODO: Call RockBLOCK to check whether any messages are pending, and
-        # update the locally cached flag for the has_messages status.
-        # This is a no-op right now because we have not implemented the ring
-        # line.
-        _logger.debug('RockBLOCK: would check for pending messages.')
-        _ = self
-        # time.sleep(4)
-
     def get_messages(self):
-        self.check_for_messages()
-
-        # TODO: Check locally cached flag for RockBLOCK has_messages status.
-        # This is a no-op right now because we have not implemented the ring
-        # line.
-        has_messages = True
-        if has_messages:
-            try:
-                self._try_to_get_messages()
-            except Exception as err:
-                _logger.warning('Failed to get messages: %s', err)
-                traceback.print_exc()
+        try:
+            self._try_to_get_messages()
+        except Exception as err:
+            _logger.warning('Failed to get messages: %s', err)
+            traceback.print_exc()
 
         try:
             mailboxes.accept_all_inbox_messages()
@@ -235,3 +210,9 @@ class QueueManager(rockblock.RockBlockProtocol):
             _logger.debug(
                 'RockBLOCK: signal is back.  Checking for outbound messages.')
             check_outbox()
+
+
+    def rockBlockRingIndicatorChanged(self, status):
+        _logger.info('RockBLOCK: ring indicator = %s.', status)
+        if status:
+            get_messages()

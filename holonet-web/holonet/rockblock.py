@@ -21,7 +21,7 @@ import serial
 try:
     import RPi.GPIO as GPIO
 except ImportError:
-    pass
+    from . import mockGPIO as GPIO
 
 
 TIME_ATTEMPTS = 20

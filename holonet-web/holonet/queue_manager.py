@@ -1,15 +1,19 @@
 import asyncio
 import logging
 import traceback
+from datetime import datetime, timedelta
 from threading import Thread
 
 from serial import serialutil
 
 from holonet import mailboxes, rockblock
 
+SIGNAL_CHECK_SECONDS = 60 * 5
+
 
 last_known_signal_status = False
 last_known_signal_strength = 0
+last_known_signal_time = datetime.min
 last_known_rockblock_status = 'Unknown'
 last_txfailed_mo_status = 0
 rockblock_serial_identifier = None
@@ -38,6 +42,8 @@ def start(device=None):
     _thread.start()
 
     _event_loop.call_soon_threadsafe(_queue_manager.get_serial_identifier)
+    request_signal_strength()
+    _event_loop.call_later(SIGNAL_CHECK_SECONDS, _check_signal)
 
 
 def check_outbox():
@@ -48,6 +54,9 @@ def get_messages():
 
 def request_signal_strength():
     _event_loop.call_soon_threadsafe(_queue_manager.request_signal_strength)
+
+def _check_signal():
+    _event_loop.call_soon_threadsafe(_queue_manager.check_signal)
 
 
 class QueueManager(rockblock.RockBlockProtocol):
@@ -191,14 +200,16 @@ class QueueManager(rockblock.RockBlockProtocol):
 
         # This triggers a callback to rockBlockSignalUpdate (assuming it
         # succeeds).
-        self.rockblock.wait_for_good_signal()
+        self.rockblock.requestSignalStrength()
 
     def rockBlockSignalUpdate(self, signal):
         global last_known_signal_status
         global last_known_signal_strength
+        global last_known_signal_time
 
         _logger.info('RockBLOCK: signal strength = %s.', signal)
         last_known_signal_strength = signal
+        last_known_signal_time = datetime.utcnow()
         if signal < rockblock.SIGNAL_THRESHOLD:
             _logger.warning('RockBLOCK: No signal.')
             last_known_signal_status = False
@@ -210,6 +221,15 @@ class QueueManager(rockblock.RockBlockProtocol):
             _logger.debug(
                 'RockBLOCK: signal is back.  Checking for outbound messages.')
             check_outbox()
+
+
+    def check_signal(self):
+        global last_known_signal_time
+
+        now = datetime.utcnow()
+        if last_known_signal_time + timedelta(seconds=SIGNAL_CHECK_SECONDS):
+            last_known_signal_time = now
+            self.request_signal_strength()
 
 
     def rockBlockRingIndicatorChanged(self, status):

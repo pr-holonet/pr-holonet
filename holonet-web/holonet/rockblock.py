@@ -155,7 +155,7 @@ class RockBlock(object):
     def wait_for_good_signal(self):
         retries = 0
         while True:
-            signal = self._requestSignalStrength()
+            signal = self.requestSignalStrength()
             if signal >= SIGNAL_THRESHOLD:
                 return True
 
@@ -171,7 +171,7 @@ class RockBlock(object):
         assert False  # Unreachable.
 
 
-    def _requestSignalStrength(self):
+    def requestSignalStrength(self):
         signal = self._doRequestSignalStrength()
         _logger.debug('Signal strength is %d.', signal)
         self._do_callback(RockBlockProtocol.rockBlockSignalUpdate, signal)

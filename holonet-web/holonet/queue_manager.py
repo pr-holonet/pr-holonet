@@ -6,7 +6,7 @@ from threading import Thread
 
 from serial import serialutil
 
-from holonet import mailboxes, rockblock
+from holonet import holonetGPIO, mailboxes, rockblock
 
 SIGNAL_CHECK_SECONDS = 60 * 5
 
@@ -60,11 +60,14 @@ def _check_signal():
     _event_loop.call_later(SIGNAL_CHECK_SECONDS, _check_signal)
 
 
-class QueueManager(rockblock.RockBlockProtocol):
+class QueueManager(rockblock.RockBlockProtocol,
+                   holonetGPIO.HolonetGPIOProtocol):
     def __init__(self, device):
         global last_known_rockblock_status
 
         self.send_status = None
+
+        self.gpio = holonetGPIO.HolonetGPIO(self)
 
         try:
             if device is None:
@@ -234,7 +237,7 @@ class QueueManager(rockblock.RockBlockProtocol):
             self.request_signal_strength()
 
 
-    def rockBlockRingIndicatorChanged(self, status):
+    def holonetGPIORingIndicatorChanged(self, status):
         _logger.info('RockBLOCK: ring indicator = %s.', status)
         if status:
             get_messages()

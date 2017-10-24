@@ -3,6 +3,13 @@ import errno
 import os
 
 
+def do_callback(handler, f, *args):
+    cb = getattr(handler, f.__name__, None)
+    if cb is None:
+        return None
+    return cb(*args)
+
+
 def mkdir_p(path):
     try:
         os.makedirs(path)

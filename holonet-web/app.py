@@ -1,4 +1,5 @@
 import logging
+from logging.handlers import RotatingFileHandler
 import os
 
 from flask import Flask, redirect, render_template, request, url_for
@@ -6,7 +7,29 @@ from flask import Flask, redirect, render_template, request, url_for
 from holonet import mailboxes, queue_manager
 
 
+LOG_FILE = '/var/opt/pr-holonet/log/holonet-web.log'
+HOLONET_LOG_LEVEL = logging.DEBUG
+
+
+is_flask_subprocess = os.environ.get('WERKZEUG_RUN_MAIN') == 'true'
+is_gunicorn = "gunicorn" in os.environ.get("SERVER_SOFTWARE", "")
+
 app = Flask(__name__)
+
+holonet_logger = logging.getLogger('holonet')
+holonet_logger.setLevel(HOLONET_LOG_LEVEL)
+for handler in app.logger.handlers:
+    holonet_logger.addHandler(handler)
+
+if is_gunicorn:
+    handler = RotatingFileHandler(LOG_FILE, maxBytes=1000000, backupCount=1)
+    fmt = '%(asctime)-15s %(levelname)-7.7s %(message)s'
+    handler.setFormatter(logging.Formatter(fmt=fmt))
+    holonet_logger.addHandler(handler)
+    app.logger.addHandler(handler)
+
+if is_flask_subprocess or is_gunicorn:
+    queue_manager.start(app.config.get('ROCKBLOCK_DEVICE'))
 
 
 @app.route('/')
@@ -107,11 +130,4 @@ def _response_return_to_previous():
 
 
 if __name__ == '__main__':
-    holonet_logger = logging.getLogger('holonet')
-    holonet_logger.setLevel(logging.DEBUG)
-    for handler in app.logger.handlers:
-        holonet_logger.addHandler(handler)
-
-    if os.environ.get('WERKZEUG_RUN_MAIN') == 'true':
-        queue_manager.start(app.config.get('ROCKBLOCK_DEVICE'))
     app.run(debug=True, host='0.0.0.0')

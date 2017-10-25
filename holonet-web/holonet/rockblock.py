@@ -332,6 +332,7 @@ class RockBlock(object):
         for b in msg:
             checksum += b
 
+        # _logger.debug('RockBLOCK: queuing message: %s', msg)
         self.s.write(msg)
         self.s.write(checksum.to_bytes(2, byteorder='big'))
 
@@ -516,13 +517,16 @@ class RockBlock(object):
 
 
     def _send_command(self, cmd):
+        # _logger.debug('RockBLOCK: sending cmd: %s', cmd)
         self.s.write(cmd + b'\r')
 
 
     def _read_next_line(self):
         """Read the next line, and return it with the trailing newline
            stripped."""
-        return self.s.readline().rstrip()
+        result = self.s.readline().rstrip()
+        # _logger.debug('RockBLOCK: read line %s', result)
+        return result
 
 
     def _read_ack(self, cmd):

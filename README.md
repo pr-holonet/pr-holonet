@@ -9,6 +9,24 @@
 | 12       | GPIO 18 (PCM\_CLK) | 10              | RI (Ring Indicator) |
 | 14       | Ground             | 6               | Ground              |
 
+LED pinouts follow.  This table, and the code, assume that the connection
+status LED is an RGB LED with common cathode, and the message pending LED
+is a simple one-color LED.  Obviously if you package the LEDs somehow then
+you can run a common ground and won't need to use all the ground pins.
+
+Each LED anode will need a current-limiting resistor in series, sized to
+suit the RPi's GPIO limits (17 mA limit at 3.3V is recommended).
+
+| Pi pin # | Pi pin desc        | Connection                             |
+|----------|--------------------|----------------------------------------|
+| 16       | GPIO 23            | Message pending LED anode              |
+| 20       | Ground             | Message pending LED cathode            |
+| 22       | GPIO 25            | Connection status LED red anode        |
+| 24       | GPIO 8             | Connection status LED green anode      |
+| 26       | GPIO 7             | Connection status LED blue anode       |
+| 25       | Ground             | Connection status LED cathode          |
+
+
 ## holonet-web
 
 This is the web service that runs on the Raspberry Pi.  The end user

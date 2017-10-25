@@ -44,6 +44,7 @@ def index():
     outbox = mailboxes.read_outbox()
     local_user = _get_local_user()
     recipients = mailboxes.list_recipients(local_user)
+    pending = queue_manager.message_pending_senders.keys()
     signal = queue_manager.last_known_signal_strength
     rockblock_serial = queue_manager.rockblock_serial_identifier or "Unknown"
     rockblock_status = queue_manager.last_known_rockblock_status
@@ -51,6 +52,7 @@ def index():
 
     return render_template('index.html',
                            outbox=outbox,
+                           pending=pending,
                            recipients=recipients,
                            signal=signal,
                            rockblock_err=rockblock_err,
@@ -99,6 +101,7 @@ def test():
 
 @app.route('/thread/<recipient>')
 def thread(recipient):
+    queue_manager.clear_message_pending(recipient)
     local_user = _get_local_user()
     messages = mailboxes.get_thread(local_user, recipient)
     return render_template('thread.html',
@@ -115,6 +118,7 @@ def thread_delete_by_get(recipient):
     return _thread_delete(recipient)
 
 def _thread_delete(recipient):
+    queue_manager.clear_message_pending(recipient)
     local_user = _get_local_user()
     messages = mailboxes.delete_thread(local_user, recipient)
     return _response_return_to_previous()

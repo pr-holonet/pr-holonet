@@ -16,6 +16,7 @@ last_known_signal_strength = 0
 last_known_signal_time = datetime.min
 last_known_rockblock_status = 'Unknown'
 last_txfailed_mo_status = 0
+message_pending_senders = {}
 rockblock_serial_identifier = None
 
 _logger = logging.getLogger('holonet.queue_manager')
@@ -49,6 +50,11 @@ def start(device=None):
 def check_outbox():
     _event_loop.call_soon_threadsafe(_queue_manager.check_outbox)
 
+def clear_message_pending(sender):
+    del message_pending_senders[sender]
+    led_status = bool(message_pending_senders)
+    holonetGPIO.HolonetGPIO.set_led_message_pending(led_status)
+
 def get_messages():
     _event_loop.call_soon_threadsafe(_queue_manager.get_messages)
 
@@ -68,6 +74,8 @@ class QueueManager(rockblock.RockBlockProtocol,
         self.send_status = None
 
         self.gpio = holonetGPIO.HolonetGPIO(self)
+        self.gpio.set_led_connection_status(holonetGPIO.BLUE)
+        self.gpio.set_led_message_pending(False)
 
         try:
             if device is None:
@@ -95,6 +103,9 @@ class QueueManager(rockblock.RockBlockProtocol,
             self.rockblock = None
             last_known_rockblock_status = 'Broken'
 
+        if self.rockblock is None:
+            self.gpio.set_led_connection_status(holonetGPIO.RED)
+
 
     def get_serial_identifier(self):
         if self.rockblock is None:
@@ -118,7 +129,11 @@ class QueueManager(rockblock.RockBlockProtocol,
             traceback.print_exc()
 
         try:
-            mailboxes.accept_all_inbox_messages()
+            msgs = mailboxes.accept_all_inbox_messages()
+            if msgs:
+                for msg in msgs:
+                    message_pending_senders[msg.sender] = True
+                self.gpio.set_led_message_pending(True)
         except Exception as err:
             _logger.error('Failed to accept messages: %s', err)
             traceback.print_exc()
@@ -217,9 +232,11 @@ class QueueManager(rockblock.RockBlockProtocol,
         if signal < rockblock.SIGNAL_THRESHOLD:
             _logger.warning('RockBLOCK: No signal.')
             last_known_signal_status = False
+            self.gpio.set_led_connection_status(holonetGPIO.YELLOW)
         else:
             last = last_known_signal_status
             last_known_signal_status = True
+            self.gpio.set_led_connection_status(holonetGPIO.GREEN)
             if last:
                 return
             _logger.debug(

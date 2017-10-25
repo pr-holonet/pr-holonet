@@ -21,6 +21,13 @@ src: url('static/NHLSabres.ttf');
 <p>Signal strength: {{ signal }}.</p>
 <p>RockBLOCK error: {{ rockblock_err }}.</p>
 
+{% if pending %}
+<h2>Unread messages</h2>
+{% for sender in pending %}
+<p><a href="/thread/{{ sender }}">{{ sender }}</a></p>
+{% endfor %}
+{% endif %}
+
 {% if outbox %}
 <h2>Messages not yet sent</h2>
 {% for msg in outbox %}

@@ -31,7 +31,7 @@ class HolonetGPIOProtocol(object):  # pylint: disable=too-few-public-methods
         pass
 
 
-class HolonetGPIO(object):  # pylint: disable=too-few-public-methods
+class HolonetGPIO(object):
     def __init__(self, callback):
         self.callback = callback
 

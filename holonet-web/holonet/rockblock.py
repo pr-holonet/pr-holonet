@@ -395,7 +395,7 @@ class RockBlock(object):
                 return False
 
             response = self._read_next_line()
-            if not response.startswith(b'SBDIX: '):
+            if not response.startswith(b'+SBDIX: '):
                 _logger.error('Got bad response when creating session: %s',
                               response)
                 return False

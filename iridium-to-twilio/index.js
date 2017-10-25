@@ -16,8 +16,7 @@ exports.handler = (event, context, callback) => {
     let data = p.data;
     
     let parsedData = hex2a(data);
-    let [num, ...content] = parsedData.split(':');
-    content = content.join(':');
+    let [num, content] = splitWithTail(parsedData, ':', 1);
     
     let post_params = {
         "To": num,
@@ -80,4 +79,12 @@ function hex2a(hex) {
 
 function a2b64(a) {
     return new Buffer(a, 'ascii').toString('base64');
+}
+
+function splitWithTail(str, delim, count) {
+  var parts = str.split(delim);
+  var tail = parts.slice(count).join(delim);
+  var result = parts.slice(0, count);
+  result.push(tail);
+  return result;
 }

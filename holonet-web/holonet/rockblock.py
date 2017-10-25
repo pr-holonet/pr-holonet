@@ -343,8 +343,8 @@ class RockBlock(object):
         command = b'AT+SBDWB=' + msg_len_bytes
         self._send_command(command)
 
-        if (not self._read_next_line() == command or
-                not self._read_next_line() == b'READY'):
+        if (self._read_next_line() != command or
+                self._read_next_line() != b'READY'):
             return False
 
         checksum = 0

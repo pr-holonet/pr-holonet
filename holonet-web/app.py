@@ -81,7 +81,7 @@ def send_message():
 @app.route('/send_receive', methods=['POST'])
 def send_receive():
     queue_manager.check_outbox()
-    queue_manager.get_messages()
+    queue_manager.get_messages(ack_ring=False)
 
     return _response_return_to_previous()
 

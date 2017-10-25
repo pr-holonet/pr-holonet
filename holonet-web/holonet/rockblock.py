@@ -176,12 +176,19 @@ class RockBlock(object):
         return result
 
 
-    def messageCheck(self):
+    def messageCheck(self, ack_ring):
+        """
+        Args:
+            ack_ring (bool): Whether this call is acking a ring indicator
+                from the network.  If it is, we need to use the +SBDIXA command
+                rather than +SBDIX.
+        """
         self._ensureConnectionStatus()
 
         self._do_callback(RockBlockProtocol.rockBlockRxStarted)
 
-        if self._attemptConnection() and self._attemptSession():
+        if self._attemptConnection() and \
+                self._attemptSession(ack_ring=ack_ring):
             return True
 
         self._do_callback(RockBlockProtocol.rockBlockRxFailed)
@@ -366,7 +373,7 @@ class RockBlock(object):
         return self._send_and_ack_command(b'AT+SBDMTA=1')
 
 
-    def _attemptSession(self):
+    def _attemptSession(self, ack_ring=False):
         self._ensureConnectionStatus()
 
         SESSION_ATTEMPTS = 3
@@ -377,7 +384,8 @@ class RockBlock(object):
 
             SESSION_ATTEMPTS -= 1
 
-            command = b'AT+SBDIX'
+            command_name = b'+SBDIXA' if ack_ring else b'+SBDIX'
+            command = b'AT' + command_name
             self._send_command(command)
             response = self._read_next_line()
 
@@ -387,7 +395,7 @@ class RockBlock(object):
                 return False
 
             response = self._read_next_line()
-            if not response.startswith(b'+SBDIX: '):
+            if not response.startswith(command_name + b': '):
                 _logger.error('Got bad response when creating session: %s',
                               response)
                 return False

@@ -55,8 +55,8 @@ def clear_message_pending(sender):
     led_status = bool(message_pending_senders)
     holonetGPIO.HolonetGPIO.set_led_message_pending(led_status)
 
-def get_messages():
-    _event_loop.call_soon_threadsafe(_queue_manager.get_messages)
+def get_messages(ack_ring):
+    _event_loop.call_soon_threadsafe(_queue_manager.get_messages, ack_ring)
 
 def request_signal_strength():
     _event_loop.call_soon_threadsafe(_queue_manager.request_signal_strength)
@@ -121,9 +121,9 @@ class QueueManager(rockblock.RockBlockProtocol,
             traceback.print_exc()
 
 
-    def get_messages(self):
+    def get_messages(self, ack_ring):
         try:
-            self._try_to_get_messages()
+            self._try_to_get_messages(ack_ring=ack_ring)
         except Exception as err:
             _logger.warning('Failed to get messages: %s', err)
             traceback.print_exc()
@@ -139,7 +139,7 @@ class QueueManager(rockblock.RockBlockProtocol,
             traceback.print_exc()
 
 
-    def _try_to_get_messages(self):
+    def _try_to_get_messages(self, ack_ring):
         if self.rockblock is None:
             _logger.debug('Cannot get messages: we have no RockBLOCK.')
             return
@@ -147,7 +147,7 @@ class QueueManager(rockblock.RockBlockProtocol,
         # We get calls to rockBlockRxReceived during the call below for any
         # messages that were waiting for us.
         _logger.debug('Checking for messages.')
-        self.rockblock.messageCheck()
+        self.rockblock.messageCheck(ack_ring=ack_ring)
 
 
     def rockBlockRxReceived(self, _mtmsn, data):
@@ -257,4 +257,4 @@ class QueueManager(rockblock.RockBlockProtocol,
     def holonetGPIORingIndicatorChanged(self, status):
         _logger.info('RockBLOCK: ring indicator = %s.', status)
         if status:
-            get_messages()
+            get_messages(ack_ring=True)

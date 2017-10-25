@@ -385,8 +385,7 @@ class RockBlock(object):
 
             SESSION_ATTEMPTS -= 1
 
-            command_name = b'+SBDIXA' if ack_ring else b'+SBDIX'
-            command = b'AT' + command_name
+            command = b'AT+SBDIXA' if ack_ring else b'AT+SBDIX'
             self._send_command(command)
             response = self._read_next_line()
 
@@ -396,7 +395,7 @@ class RockBlock(object):
                 return False
 
             response = self._read_next_line()
-            if not response.startswith(command_name + b': '):
+            if not response.startswith(b'SBDIX: '):
                 _logger.error('Got bad response when creating session: %s',
                               response)
                 return False

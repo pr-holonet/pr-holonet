@@ -1,17 +1,17 @@
 'use strict';
 
 let https = require('https');
-
-console.log('Loading function');
+let querystring = require('querystring');
 
 const TWILIO_SID = process.env.TWILIO_ACCOUNT_SID;
 const TWILIO_TOKEN = process.env.TWILIO_AUTH_TOKEN;
 const TWILIO_PHONE = process.env.TWILIO_PHONE_NUMBER;
 
+
 exports.handler = (event, context, callback) => {
     console.log("Received message!", event, context);
 
-    let p = urlDecode(event.body);
+    let p = querystring.decode(event.body);
     let imei = p.imei;
     let data = p.data;
     
@@ -24,7 +24,7 @@ exports.handler = (event, context, callback) => {
         "From": TWILIO_PHONE, 
         "Body": content
     };
-    let post_data = urlEncode(post_params);
+    let post_data = querystring.encode(post_params);
     
     const auth = `${TWILIO_SID}:${TWILIO_TOKEN}`;
     const auth_b64 = a2b64(auth);
@@ -74,22 +74,8 @@ exports.handler = (event, context, callback) => {
 };
 
 
-function urlEncode(obj) {
-    return Object.keys(obj).map(k => `${k}=${encodeURIComponent(obj[k])}`).join("&");
-}
-
-function urlDecode(body) {
-    var out = {};
-    body.split('&').map(prop => prop.split('=')).forEach(([k, v]) => out[k] = decodeURIComponent(v));
-    return out;
-}
-
 function hex2a(hex) {
     return new Buffer(hex, 'hex').toString();
-}
-
-function a2hex(a) {
-    return new Buffer(a, 'ascii').toString('hex');
 }
 
 function a2b64(a) {

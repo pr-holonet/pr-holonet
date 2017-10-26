@@ -71,3 +71,9 @@ rest_api_id=$(
 handler_url="https://$rest_api_id.execute-api.$region.amazonaws.com/Prod/holonet-handler"
 echo "Endpoint is $handler_url"
 ```
+
+### Configure the handler URL with Twilio
+
+The endpoint printed by the last command above goes into the Twilio console
+under Phone numbers > your configured number > A call comes in.  The
+settings should be "Webhook" and "HTTP Post".

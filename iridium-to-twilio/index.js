@@ -10,6 +10,50 @@ const TWILIO_PHONE = process.env.TWILIO_PHONE_NUMBER;
 
 
 exports.handler = (ev, context, callback) => {
+    if (ev.headers['User-Agent'].startsWith('TwilioProxy')) {
+        handleFromTwilio(ev, context, callback);
+    }
+    else {
+        handleFromIridium(ev, context, callback);
+    }
+};
+
+function handleFromTwilio(ev, context, callback) {
+    if (!validateTwilioSignature(ev)) {
+        callback(null, {
+            statusCode: '403',
+        });
+        return;
+    }
+
+
+
+    callback(null, {
+        statusCode: '200',
+        body: 'ok',
+        headers: {
+            'Content-Type': 'text/plain',
+        },
+    });
+}
+
+function validateTwilioSignature(ev) {
+    const headers = ev.headers;
+    const host = headers.Host;
+    const reqPath = ev.requestContext.path;
+    const twilioSignature = headers['X-Twilio-Signature'];
+    const url = `https://${host}${reqPath}`;
+    const params = querystring.decode(ev.body);
+    const result = twilio.validateRequest(TWILIO_TOKEN, twilioSignature, url,
+                                          params);
+    if (!result) {
+        console.log("Twilio signature validation failed!", url, params,
+                    twilioSignature)
+    }
+    return result;
+}
+
+function handleFromIridium(ev, context, callback) {
     const p = querystring.decode(ev.body);
     const data = p.data;
     const parsedData = hex2a(data);

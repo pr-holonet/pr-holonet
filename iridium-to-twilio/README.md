@@ -10,6 +10,13 @@ Twilio for sending as an SMS on the cell network.
 These instructions use the AWS CLI to create the Lambda function and
 associated role, and jq to filter the AWS responses.
 
+### Get the dependencies from NPM
+
+```
+# From pr-holonet/iridium-to-twilio
+npm install --prefix=.
+```
+
 ### Configure the AWS CLI
 
 Create a file with your AWS credentials.  For example, `~/.aws-pr-holonet.cfg`:
@@ -30,14 +37,14 @@ export AWS_CONFIG_FILE=~/.aws-pr-holonet.cfg
 ### Create the stack
 
 ```
+# From pr-holonet/iridium-to-twilio
+
 region='us-east-1'
 stack_name='iridium-to-twilio-stack'
 bucket_name='pr-holonet-iridium-to-twilio'
 twilio_account='<Your Twilio account ID>'
 twilio_auth_token='<Your Twilio auth token>'
 twilio_phone_no='+15556667777 <phone number registered with Twilio>'
-
-cd pr-holonet/iridium-to-twilio 
 
 # Delete the existing stack if necessary
 aws cloudformation delete-stack --stack-name "$stack_name"

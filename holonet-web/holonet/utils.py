@@ -37,6 +37,23 @@ def normalize_phone_number(s):
             no, phonenumbers.PhoneNumberFormat.E164)
 
 
+def printable_phone_number(s):
+    if not s:
+        return ''
+
+    # Note that we're assuming USA here, but this shouldn't matter, because
+    # s should already be in E.164 format.
+    no = phonenumbers.parse(s, 'US')
+    if not phonenumbers.is_valid_number(no):
+        return s
+
+    # We're checking for +1 here, but this simply means that non-US numbers
+    # will have the international prefix.
+    fmt = (phonenumbers.PhoneNumberFormat.NATIONAL if no.country_code == 1
+           else phonenumbers.PhoneNumberFormat.INTERNATIONAL)
+    return phonenumbers.format_number(no, fmt)
+
+
 def utcnow_str():
     return datetime.utcnow().isoformat('T')
 

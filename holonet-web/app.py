@@ -5,6 +5,7 @@ import os
 from flask import Flask, redirect, render_template, request, url_for
 
 from holonet import mailboxes, queue_manager
+from holonet.utils import printable_phone_number
 
 
 LOG_FILE = '/var/opt/pr-holonet/log/holonet-web.log'
@@ -44,7 +45,9 @@ def index():
     outbox = mailboxes.read_outbox()
     local_user = _get_local_user()
     recipients = mailboxes.list_recipients(local_user)
+    recipients_printable = _printable_phone_number_dict(recipients)
     pending = queue_manager.message_pending_senders.keys()
+    pending_printable = _printable_phone_number_dict(pending)
     signal = queue_manager.last_known_signal_strength
     rockblock_serial = queue_manager.rockblock_serial_identifier or "Unknown"
     rockblock_status = queue_manager.last_known_rockblock_status
@@ -53,11 +56,17 @@ def index():
     return render_template('index.html',
                            outbox=outbox,
                            pending=pending,
+                           pending_printable=pending_printable,
                            recipients=recipients,
+                           recipients_printable=recipients_printable,
                            signal=signal,
                            rockblock_err=rockblock_err,
                            rockblock_serial=rockblock_serial,
                            rockblock_status=rockblock_status)
+
+
+def _printable_phone_number_dict(nos):
+    return dict(map(lambda x: (x, printable_phone_number(x)), nos))
 
 
 @app.route('/send_message', methods=['POST'])
@@ -104,9 +113,11 @@ def thread(recipient):
     queue_manager.clear_message_pending(recipient)
     local_user = _get_local_user()
     messages = mailboxes.get_thread(local_user, recipient)
+    recipient_printable = printable_phone_number(recipient)
     return render_template('thread.html',
                            messages=messages,
-                           recipient=recipient)
+                           recipient=recipient,
+                           recipient_printable=recipient_printable)
 
 
 @app.route('/thread/<recipient>', methods=['DELETE'])

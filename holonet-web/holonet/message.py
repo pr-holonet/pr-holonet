@@ -1,5 +1,7 @@
 import json
 
+from .utils import printable_phone_number
+
 
 class MissingRecipientException(Exception):
     pass
@@ -19,6 +21,9 @@ class Message(object):  # pylint: disable=too-many-instance-attributes
         if json_dict:
             for k in json_dict:
                 setattr(self, k, json_dict[k])
+
+        if self.recipient:
+            self.recipient_printable = printable_phone_number(self.recipient)
 
 
     def _get_arrow(self):

@@ -24,21 +24,22 @@ src: url('static/NHLSabres.ttf');
 {% if pending %}
 <h2>Unread messages</h2>
 {% for sender in pending %}
-<p><a href="/thread/{{ sender }}">{{ sender }}</a></p>
+<p><a href="/thread/{{ sender }}">{{ pending_printable[sender] }}</a></p>
 {% endfor %}
 {% endif %}
 
 {% if outbox %}
 <h2>Messages not yet sent</h2>
 {% for msg in outbox %}
-<p><code>{{ msg.timestamp }} &rarr; </code>{{ msg.recipient }}: {{ msg.body }}</p>
+<p><code>{{ msg.timestamp }} &rarr; </code>{{ msg.recipient_printable }}:
+{{ msg.body }}</p>
 {% endfor %}
 {% endif %}
 
 {% if recipients %}
 <h2>Threads</h2>
 {% for recip in recipients %}
-<p><a href="/thread/{{ recip }}">{{ recip }}</a></p>
+<p><a href="/thread/{{ recip }}">{{ recipients_printable[recip] }}</a></p>
 {% endfor %}
 {% endif %}
 

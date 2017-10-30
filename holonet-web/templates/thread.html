@@ -1,11 +1,11 @@
 <!doctype html>
 <head>
-<title>{{ recipient }}</title>
+<title>{{ recipient_printable }}</title>
 </head>
 <body>
 <p><a href="/">Back to all messages</a></p>
 
-<h1>Messages in thread with {{ recipient }}</h1>
+<h1>Messages in thread with {{ recipient_printable }}</h1>
 {% for msg in messages %}
 <p
 {% if msg.not_yet_sent %}

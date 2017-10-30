@@ -51,7 +51,8 @@ def check_outbox():
     _event_loop.call_soon_threadsafe(_queue_manager.check_outbox)
 
 def clear_message_pending(sender):
-    del message_pending_senders[sender]
+    if sender in message_pending_senders:
+        del message_pending_senders[sender]
     led_status = bool(message_pending_senders)
     holonetGPIO.HolonetGPIO.set_led_message_pending(led_status)
 

@@ -239,8 +239,9 @@ def _read_json(path):
 def _write_file(path, data):
     mkdir_p(os.path.dirname(path))
 
+    mode = 'w' if isinstance(data, str) else 'wb'
     tmpfile = '%s.tmp' % path
-    with open(tmpfile, 'w') as f:
+    with open(tmpfile, mode) as f:
         f.write(data)
         f.flush()
         os.fsync(f.fileno())

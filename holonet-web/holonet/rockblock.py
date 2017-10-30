@@ -156,21 +156,16 @@ class RockBlock(object):
         self._ensureConnectionStatus()
 
         command = b'AT+CSQ'
-        self._send_command(command)
-        response = self._read_next_line()
-
-        if response != command:
-            _logger.error('Incorrect echo for %s: %s', command, response)
+        if not self._send_command_and_read_echo(command):
             return -1
 
         response = self._read_next_line()
-
         if b'+CSQ' not in response or len(response) != 6:
             _logger.error('Incorrect response to %s: %s', command, response)
             return -1
 
-        self._read_next_line()    # BLANK
-        self._read_next_line()    # OK
+        if not self._read_ok(command):
+            return -1
 
         result = response[5] - ord('0')
         return result
@@ -193,26 +188,6 @@ class RockBlock(object):
 
         self._do_callback(RockBlockProtocol.rockBlockRxFailed)
         return False
-
-
-    def networkTime(self):
-        self._ensureConnectionStatus()
-
-        command = b'AT-MSSTM'
-        self._send_command(command)
-
-        if self._read_next_line() == command:
-            response = self._read_next_line()
-
-            self._read_next_line()   # BLANK
-            self._read_next_line()   # OK
-
-            if b'no network service' not in response:
-                utc = int(response[8:], 16)
-                utc = int((self.IRIDIUM_EPOCH + (utc * 90)) / 1000)
-                return utc
-            else:
-                return 0
 
 
     def sendMessage(self, msg):
@@ -244,15 +219,13 @@ class RockBlock(object):
         self._ensureConnectionStatus()
 
         command = b'AT+GSN'
-        self._send_command(command)
+        if not self._send_command_and_read_echo(command):
+            return None
 
-        if self._read_next_line() == command:
-            response = self._read_next_line()
-            self._read_next_line()   # BLANK
-            self._read_next_line()   # OK
-            return response.decode('ascii')
-
-        return None
+        response = self._read_next_line()
+        if not self._read_ok(command):
+            return None
+        return response.decode('ascii')
 
 
     # One-time initial setup function (Disables Flow Control)
@@ -336,12 +309,9 @@ class RockBlock(object):
         self.s.write(msg)
         self.s.write(checksum.to_bytes(2, byteorder='big'))
 
-        self._read_next_line()   # BLANK
         result = (self._read_next_line() == b'0')
-
-        self._read_next_line()   # BLANK
-        self._read_next_line()   # OK
-
+        if not self._read_ok(command):
+            return False
         return result
 
 
@@ -357,11 +327,10 @@ class RockBlock(object):
         self._send_command(command)
         response = self._read_next_line()
         if response == command or response == b'':
-            response = self._read_next_line()
-            if response == b'OK':
-                return True
-        _logger.error('Failed to enable echo; got response %s', response)
-        return False
+            return self._read_ok(command)
+        else:
+            _logger.error('Failed to enable echo; got response %s', response)
+            return False
 
 
     def _disableFlowControl(self):
@@ -386,12 +355,7 @@ class RockBlock(object):
             SESSION_ATTEMPTS -= 1
 
             command = b'AT+SBDIXA' if ack_ring else b'AT+SBDIX'
-            self._send_command(command)
-            response = self._read_next_line()
-
-            if response != command:
-                _logger.error('Got bad response when creating session: %s',
-                              response)
+            if not self._send_command_and_read_echo(command):
                 return False
 
             response = self._read_next_line()
@@ -490,9 +454,7 @@ class RockBlock(object):
         self._ensureConnectionStatus()
 
         command = b'AT-MSSTM'
-        self._send_command(command)
-
-        if self._read_next_line() != command:  # Echo
+        if not self._send_command_and_read_echo(command):
             return False
 
         response = self._read_next_line()
@@ -511,23 +473,23 @@ class RockBlock(object):
         self._ensureConnectionStatus()
 
         command = b'AT+SBDD0'
-        self._send_command(command)
-
-        if self._read_next_line() != command:
+        if not self._send_command_and_read_echo(command):
             return False
 
         if self._read_next_line() != b'0':
             return False
 
-        if not self._read_ok(command):
-            return False
-
-        return True
+        return self._read_ok(command)
 
 
     def _send_and_ack_command(self, cmd):
         self._send_command(cmd)
         return self._read_ack(cmd)
+
+
+    def _send_command_and_read_echo(self, cmd):
+        self._send_command(cmd)
+        return self._read_echo(cmd)
 
 
     def _ensureConnectionStatus(self):
@@ -557,8 +519,17 @@ class RockBlock(object):
     def _read_ack(self, cmd):
         """Read the next two lines, checking that the first is the given cmd
            echoed back, and the next is b'OK'."""
-        return (self._read_next_line() == cmd and
+        return (self._read_echo(cmd) and
                 self._read_ok(cmd))
+
+
+    def _read_echo(self, cmd):
+        """Read the next line, checking that it matches the given cmd."""
+        response = self._read_next_line()
+        result = response == cmd
+        if not result:
+            _logger.error('Incorrect echo for %s: %s', cmd, response)
+        return result
 
 
     def _read_ok(self, cmd):

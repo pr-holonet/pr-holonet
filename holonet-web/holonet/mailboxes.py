@@ -211,7 +211,7 @@ def _accept_message(local_user, sender, timestamp, received_at, body):
 
     msg_str = msg.to_json_str()
 
-    fname = '%s.json' % received_at
+    fname = timestamp_filename(received_at, 'json')
     thread_path = os.path.join(threadbox_path, fname)
     _write_file(thread_path, msg_str)
 

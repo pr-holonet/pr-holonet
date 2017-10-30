@@ -451,18 +451,38 @@ class RockBlock(object):
     def _processMtMessage(self, mtMsn):
         self._ensureConnectionStatus()
 
-        self._send_command(b'AT+SBDRB')
-        response = self._read_next_line().replace(b'AT+SBDRB\r', '').strip()
+        command = b'AT+SBDRB'
+        self._send_command(command)
+        response = self._read_next_line()
+        if not response.startswith(command + b'\r'):
+            _logger.error('Incorrect echo for %s: %s', command, response)
+            return
+        response = response[(len(command) + 1):]
 
         if response == b'OK':
             _logger.warning('No message content.. strange!')
-            self._do_callback(RockBlockProtocol.rockBlockRxReceived,
-                              mtMsn, b'')
+            content = b''
         else:
+            msg_len = int.from_bytes(response[:2], byteorder='big')
             content = response[2:-2]
-            self._do_callback(RockBlockProtocol.rockBlockRxReceived, mtMsn,
-                              content)
-            self.s.readline()   # BLANK?
+            checksum = int.from_bytes(response[-2:], byteorder='big')
+
+            our_msg_len = len(content)
+            if our_msg_len != msg_len:
+                _logger.warning(
+                    'Ignoring message length mismatch! %s != %s in message %s',
+                    our_msg_len, msg_len, response)
+
+            our_checksum = sum(map(int, content)) & 0xffff
+            if our_checksum != checksum:
+                _logger.warning(
+                    'Ignoring checksum failure! %s != %s in message %s',
+                    our_checksum, checksum, response)
+
+            self.s.readline()   # OK
+
+        self._do_callback(RockBlockProtocol.rockBlockRxReceived, mtMsn,
+                          content)
 
 
     def _isNetworkTimeValid(self):

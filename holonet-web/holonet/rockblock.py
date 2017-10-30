@@ -400,8 +400,8 @@ class RockBlock(object):
                               response)
                 return False
 
-            self.s.readline()   # BLANK
-            self.s.readline()   # OK
+            if not self._read_ok(command):
+                return False
 
             # +SBDIX: <MO status>, <MOMSN>, <MT status>, <MTMSN>, <MT length>,
             # <MTqueued>
@@ -479,7 +479,8 @@ class RockBlock(object):
                     'Ignoring checksum failure! %s != %s in message %s',
                     our_checksum, checksum, response)
 
-            self.s.readline()   # OK
+            if not self._read_ok(command):
+                return False
 
         self._do_callback(RockBlockProtocol.rockBlockRxReceived, mtMsn,
                           content)
@@ -497,8 +498,8 @@ class RockBlock(object):
         response = self._read_next_line()
         if response.startswith(b'-MSSTM'):
             # -MSSTM: a5cb42ad / no network service
-            self.s.readline()   # OK
-            self.s.readline()   # BLANK
+            if not self._read_ok(command):
+                return False
 
             if len(response) == 16:
                 return True
@@ -518,8 +519,7 @@ class RockBlock(object):
         if self._read_next_line() != b'0':
             return False
 
-        self.s.readline()  # BLANK
-        if self._read_next_line() != b'OK':
+        if not self._read_ok(command):
             return False
 
         return True
@@ -545,6 +545,12 @@ class RockBlock(object):
            stripped."""
         result = self.s.readline().rstrip()
         # _logger.debug('RockBLOCK: read line %s', result)
+        if result == b'SBDRING' or result == b'':
+            # Unsolicited ring notification.  Ignore it, we're using the GPIO
+            # pin so we already know.
+            # Or a blank line.  Ignore them because we're either getting
+            # spurious ones or you get one before the SBDRING (not sure which).
+            return self._read_next_line()
         return result
 
 
@@ -552,7 +558,17 @@ class RockBlock(object):
         """Read the next two lines, checking that the first is the given cmd
            echoed back, and the next is b'OK'."""
         return (self._read_next_line() == cmd and
-                self._read_next_line() == b'OK')
+                self._read_ok(cmd))
+
+
+    def _read_ok(self, cmd):
+        """Read the next line, checking that it is b'OK'."""
+        response = self._read_next_line()
+        result = response == b'OK'
+        if not result:
+            _logger.error('Got %s when expecting OK in response to %s',
+                          response, cmd)
+        return result
 
 
     def _do_callback(self, f, *args):

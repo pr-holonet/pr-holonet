@@ -7,7 +7,8 @@ import shutil
 from enum import Enum
 
 from .message import Message
-from .utils import mkdir_p, timestamp_filename, utcnow_str
+from .utils import mkdir_p, normalize_phone_number, timestamp_filename, \
+    utcnow_str
 
 
 MAILBOXES_ROOT = '/var/opt/pr-holonet/mailboxes'
@@ -48,7 +49,12 @@ def delete_thread(local_user, recipient):
         _logger.error('Cannot delete %s!  %s', threadbox_path, err)
 
 
-def queue_message_send(local_user, recipient, body):
+def queue_message_send(local_user, recipient_, body):
+    recipient = normalize_phone_number(recipient_)
+    if not recipient:
+        _logger.error('Refusing to send message to invalid phone number %s',
+                      recipient_)
+
     threadbox_path = _path_of_threadbox(local_user, recipient)
     outbox_path = _path_of_mailbox(MailboxKind.outbox)
 

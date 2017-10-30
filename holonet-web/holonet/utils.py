@@ -2,6 +2,8 @@ from datetime import datetime
 import errno
 import os
 
+import phonenumbers
+
 
 def do_callback(handler, f, *args):
     cb = getattr(handler, f.__name__, None)
@@ -18,6 +20,21 @@ def mkdir_p(path):
             pass
         else:
             raise
+
+
+def normalize_phone_number(s):
+    if not s:
+        return None
+
+    # Note that we're assuming USA phone numbers here, unless the user
+    # starts the number with a +.
+    country = None if s[0] == '+' else 'US'
+    no = phonenumbers.parse(s, country)
+    if not phonenumbers.is_valid_number(no):
+        return None
+    else:
+        return phonenumbers.format_number(
+            no, phonenumbers.PhoneNumberFormat.E164)
 
 
 def utcnow_str():

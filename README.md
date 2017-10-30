@@ -32,8 +32,8 @@ suit the RPi's GPIO limits (17 mA limit at 3.3V is recommended).
 This is the web service that runs on the Raspberry Pi.  The end user
 connects to this to send and receive messages.
 
-It requires Python 3, Flask, and the RPi.GPIO module.  In production
-deployments we use Gunicorn and supervisord.
+It requires Python 3, Flask, phonenumberslite, and the RPi.GPIO module.
+In production deployments we use Gunicorn and supervisord.
 
 ### Installation instructions
 
@@ -43,6 +43,7 @@ log files and mailboxes placed in `/var/opt/pr-holonet`.
 ```
 # As root:
 apt-get install python3 python3-flask gunicorn3 python3-rpi.gpio supervisor
+pip3 install phonenumberslite
 
 mkdir -p /opt/pr-holonet
 mkdir -p /var/opt/pr-holonet/log
@@ -63,7 +64,8 @@ We use pycodestyle, pylint, pytest, and setuptools.
 
 ```
 # Create and activate a virtualenv if you want.
-pip3 install --user flask pycodestyle pylint pytest RPi.GPIO setuptools
+pip3 install --user flask phonenumberslite pycodestyle pylint pytest RPi.GPIO \
+    setuptools
 
 cd pr-holonet/holonet-web
 

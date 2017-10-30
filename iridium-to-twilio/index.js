@@ -15,8 +15,8 @@ const TWILIO_PHONE = process.env.TWILIO_PHONE_NUMBER;
 const ROCKBLOCK_HOST = 'core.rock7.com';
 const ROCKBLOCK_MT_ENDPOINT = '/rockblock/MT';
 
-const emeiToNumber = require('./emeiToNumber.json')
-const numberToEmei = _.invert(emeiToNumber)
+const imeiToNumber = require('./imeiToNumber.json')
+const numberToImei = _.invert(imeiToNumber)
 
 
 exports.handler = (ev, context, callback) => {
@@ -42,7 +42,7 @@ function handleFromTwilio(ev, context, callback) {
     const to = params['To'];
     const body = params['Body'];
 
-    const destImei = numberToEmei[to];
+    const destImei = numberToImei[to];
     if (!destImei) {
         plaintextResponse(callback, '200', `Error: ${to} is not registered.`);
         return;
@@ -107,10 +107,11 @@ function validateTwilioSignature(ev, params) {
 
 function handleFromIridium(ev, context, callback) {
     const p = querystring.decode(ev.body);
-    const emei = p.emei;
-    const from = emeiToNumber[emei];
+    const imei = p.imei;
+    const from = imeiToNumber[imei];
 
     if (!from) {
+        console.log(`IMEI ${imei} is not registered.`);
         plaintextResponse(callback, '403', 'Not registered');
         return;
     }
@@ -130,6 +131,7 @@ function handleFromIridium(ev, context, callback) {
             plaintextResponse(callback, '500', 'not ok');
         }
         else {
+            // console.log('Success response from Twilio');
             plaintextResponse(callback, '200', 'ok');
         }
     });

@@ -36,10 +36,10 @@ Reference this with
 export AWS_CONFIG_FILE=~/.aws-pr-holonet.cfg
 ```
 
-### Configure emeiToNumber.json
+### Configure imeiToNumber.json
 
-The file `emeiToNumber.json` contains a mapping of RockBLOCK-registered
-EMEIs to Twilio-registered phone numbers.
+The file `imeiToNumber.json` contains a mapping of RockBLOCK-registered
+IMEIs to Twilio-registered phone numbers.
 
 This is used for two things:
 

@@ -2,6 +2,11 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: 'AWS::Serverless-2016-10-31'
 Description: A simple backend for handling events sent from Iridium to Twilio.
 Parameters:
+  RockBlockUsername:
+    Type: String
+  RockBlockPassword:
+    Type: String
+    NoEcho: true
   TwilioAuthToken:
     Type: String
     NoEcho: true
@@ -51,6 +56,10 @@ Resources:
             Method: ANY
       Environment:
         Variables:
+          ROCKBLOCK_USERNAME:
+            Ref: RockBlockUsername
+          ROCKBLOCK_PASSWORD:
+            Ref: RockBlockPassword
           TWILIO_AUTH_TOKEN:
             Ref: TwilioAuthToken
           TWILIO_ACCOUNT_SID:

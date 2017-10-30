@@ -1,9 +1,11 @@
 # Iridium-to-Twilio bridge
 
 This is a function that runs on AWS Lambda.  Whenever the Iridium service
-receives a message from a user (via the Holonet device) it notifies us with
-a webhook.  This triggers the Lambda function here, which forwards it to
-Twilio for sending as an SMS on the cell network.
+receives a message from a user (via the Holonet device) it is passed to
+the RockBLOCK service, which in turn notifies us with a webhook.  This
+triggers the Lambda function here, which forwards it to Twilio for sending as
+an SMS on the cell network.  The reverse path is also handled here, receiving
+a webhook from Twilio and forwarding the message to RockBLOCK.
 
 ## Setup instructions
 
@@ -34,6 +36,28 @@ Reference this with
 export AWS_CONFIG_FILE=~/.aws-pr-holonet.cfg
 ```
 
+### Configure emeiToNumber.json
+
+The file `emeiToNumber.json` contains a mapping of RockBLOCK-registered
+EMEIs to Twilio-registered phone numbers.
+
+This is used for two things:
+
+1. checking a message from RockBLOCK to validate that it is actually from one
+of our devices (preventing spam);
+2. routing messages from cellphone users (via Twilio) to the correct Holonet
+device.
+
+This should look something like below.  Every time you register a new
+RockBLOCK, you need to add an entry to this file, and redeploy the AWS Lambda
+stack.
+
+```
+{
+    "300234065892290": "+17873392571"
+}
+```
+
 ### Create the stack
 
 ```
@@ -42,12 +66,14 @@ export AWS_CONFIG_FILE=~/.aws-pr-holonet.cfg
 region='us-east-1'
 stack_name='iridium-to-twilio-stack'
 bucket_name='pr-holonet-iridium-to-twilio'
+rockblock_username='<Your RockBLOCK username>'
+rockblock_password='<Your RockBLOCK password>'
 twilio_account='<Your Twilio account ID>'
 twilio_auth_token='<Your Twilio auth token>'
 twilio_phone_no='+15556667777 <phone number registered with Twilio>'
 
-# Delete the existing stack if necessary
-aws cloudformation delete-stack --stack-name "$stack_name"
+# Delete the existing stack if necessary.  Usually you don't need to do this.
+# aws cloudformation delete-stack --stack-name "$stack_name"
 
 # Package the template and the code.  This copies the code to an S3 bucket.
 aws cloudformation package \
@@ -60,7 +86,9 @@ aws cloudformation deploy \
     --capabilities CAPABILITY_NAMED_IAM \
     --template-file holonet-handler.packaged.yaml \
     --stack-name "$stack_name" \
-    --parameter-overrides TwilioAuthToken="$twilio_auth_token" \
+    --parameter-overrides RockBlockUsername="$rockblock_username" \
+                          RockBlockPassword="$rockblock_password" \
+                          TwilioAuthToken="$twilio_auth_token" \
                           TwilioAccountSid="$twilio_account" \
                           TwilioPhoneNumber="$twilio_phone_no"
 
@@ -72,8 +100,12 @@ handler_url="https://$rest_api_id.execute-api.$region.amazonaws.com/Prod/holonet
 echo "Endpoint is $handler_url"
 ```
 
-### Configure the handler URL with Twilio
+### Configure the handler URL with Twilio and RockBLOCK
 
 The endpoint printed by the last command above goes into the Twilio console
-under Phone numbers > your configured number > A call comes in.  The
-settings should be "Webhook" and "HTTP Post".
+under https://www.twilio.com/console > Phone numbers > your configured number >
+A call comes in.  The settings should be "Webhook" and "HTTP Post".
+
+It also goes into the RockBLOCK console under
+https://rockblock.rock7.com/Operations > Delivery Groups > All devices >
+Delivery Addresses.

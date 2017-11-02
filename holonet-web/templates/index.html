@@ -1,23 +1,49 @@
 <!doctype html>
 <head>
-<title>Holonet</title>
+<title>HoloNet</title>
+<style>
+@font-face {
+font-family: 'NHLSabres';
+src: url('static/NHLSabres.ttf');  
+}
+</style>
 </head>
 <body>
+<img src="/static/pr-holonet.png" style="float:right; width: 120px;">
+<h1 style="font-family: 'NHLSabres'; font-size: 80px; }">Puerto Rico<br>HoloNet</h1>
+
+<br clear='both'>
+
+<h2>System health</h2>
+
+<p>RockBLOCK status: {{ rockblock_status }}.</p>
+<p>RockBLOCK serial number: {{ rockblock_serial }}.</p>
+<p>Signal strength: {{ signal }}.</p>
+<p>RockBLOCK error: {{ rockblock_err }}.</p>
+
+{% if pending %}
+<h2>Unread messages</h2>
+{% for sender in pending %}
+<p><a href="/thread/{{ sender }}">{{ pending_printable[sender] }}</a></p>
+{% endfor %}
+{% endif %}
+
 {% if outbox %}
-<h1>Messages not yet sent</h1>
+<h2>Messages not yet sent</h2>
 {% for msg in outbox %}
-<p><code>{{ msg.timestamp }} &rarr; </code>{{ msg.recipient }}: {{ msg.body }}</p>
+<p><code>{{ msg.timestamp }} &rarr; </code>{{ msg.recipient_printable }}:
+{{ msg.body }}</p>
 {% endfor %}
 {% endif %}
 
 {% if recipients %}
-<h1>Threads</h1>
+<h2>Threads</h2>
 {% for recip in recipients %}
-<p><a href="/thread/{{ recip }}">{{ recip }}</a></p>
+<p><a href="/thread/{{ recip }}">{{ recipients_printable[recip] }}</a></p>
 {% endfor %}
 {% endif %}
 
-<h1>Send message</h1>
+<h2>Send message</h2>
 <form action="/send_message" method="post">
 <table border="0">
 <tr>
@@ -35,7 +61,7 @@
 </table>
 </form>
 
-<h1>Refresh</h1>
+<h2>Refresh</h2>
 <form action="/send_receive" method="post">
 <p>Send and receive messages now: <input type="submit" value="Refresh"></p>
 </form>

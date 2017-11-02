@@ -1,7 +1,43 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: 'AWS::Serverless-2016-10-31'
 Description: A simple backend for handling events sent from Iridium to Twilio.
+Parameters:
+  RockBlockUsername:
+    Type: String
+  RockBlockPassword:
+    Type: String
+    NoEcho: true
+  TwilioAuthToken:
+    Type: String
+    NoEcho: true
+  TwilioAccountSid:
+    Type: String
+  TwilioPhoneNumber:
+    Type: String
 Resources:
+  HandlerRole:
+    Description: "Role for iridium-to-twilio."
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-role"
+      Path: /
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: [lambda.amazonaws.com]
+          Action: sts:AssumeRole
+      Policies:
+      - PolicyName: !Sub "${AWS::StackName}-role-policy"
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+            - "logs:CreateLogGroup"
+            - "logs:CreateLogStream"
+            - "logs:PutLogEvents"
+            - "logs:DescribeLogStreams"
+            Resource: "arn:aws:logs:*:*:*"
   holonethandler:
     Type: 'AWS::Serverless::Function'
     Properties:
@@ -11,7 +47,7 @@ Resources:
       Description: A simple backend for proxying events sent from Iridium to Twilio.
       MemorySize: 128
       Timeout: 15
-      Role: 'arn:aws:iam::855118616329:role/service-role/holonet'
+      Role: !GetAtt [ HandlerRole, Arn ]
       Events:
         Api1:
           Type: Api
@@ -20,8 +56,15 @@ Resources:
             Method: ANY
       Environment:
         Variables:
-          TWILIO_AUTH_TOKEN: <your token here>
-          TWILIO_ACCOUNT_SID: <your SID here>
-          TWILIO_PHONE_NUMBER: <your twilio phone number here>
+          ROCKBLOCK_USERNAME:
+            Ref: RockBlockUsername
+          ROCKBLOCK_PASSWORD:
+            Ref: RockBlockPassword
+          TWILIO_AUTH_TOKEN:
+            Ref: TwilioAuthToken
+          TWILIO_ACCOUNT_SID:
+            Ref: TwilioAccountSid
+          TWILIO_PHONE_NUMBER:
+            Ref: TwilioPhoneNumber
       Tags:
         'lambda-console:blueprint': twilio-simple-blueprint

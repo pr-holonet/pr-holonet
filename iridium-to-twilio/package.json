@@ -1,0 +1,9 @@
+{
+  "name": "pr-holonet-twilio",
+  "version": "0.0.1",
+  "description": "pr-holonet's Iridium-to-Twilio bridge",
+  "main": "index.js",
+  "dependencies": {
+    "twilio": ">=3.9.0"
+  }
+}

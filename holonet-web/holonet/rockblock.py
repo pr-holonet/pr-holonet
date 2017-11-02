@@ -1,0 +1,546 @@
+#    Copyright 2015 Makersnake
+#
+#    Licensed under the Apache License, Version 2.0 (the "License");
+#    you may not use this file except in compliance with the License.
+#    You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS,
+#    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#    See the License for the specific language governing permissions and
+#    limitations under the License.
+
+import glob
+import logging
+import sys
+import time
+
+import serial
+
+from .utils import do_callback
+
+
+TIME_ATTEMPTS = 20
+TIME_DELAY = 1
+SIGNAL_ATTEMPTS = 10
+RESCAN_DELAY = 10
+SIGNAL_THRESHOLD = 2
+
+_logger = logging.getLogger('holonet.rockblock')
+
+
+class RockBlockProtocol(object):
+    def rockBlockConnected(self):
+        pass
+
+    def rockBlockDisconnected(self):
+        pass
+
+    # SIGNAL
+    def rockBlockSignalUpdate(self, signal):
+        pass
+
+    # MT
+    def rockBlockRxStarted(self):
+        pass
+
+    def rockBlockRxFailed(self):
+        pass
+
+    def rockBlockRxReceived(self, mtmsn, data):
+        pass
+
+    def rockBlockRxMessageQueue(self, count):
+        pass
+
+    # MO
+    def rockBlockTxStarted(self):
+        pass
+
+    def rockBlockTxFailed(self, moStatus):
+        pass
+
+    def rockBlockTxSuccess(self, momsn):
+        pass
+
+
+class RockBlockException(Exception):
+    pass
+
+
+class RockBlock(object):
+
+    # May 11, 2014, at 14:23:55 (This will be 're-epoched' every couple of
+    # years!)
+    IRIDIUM_EPOCH = 1399818235000
+
+    def __init__(self, portId, callback):
+        self.s = None
+        self.portId = portId
+        self.callback = callback
+
+        # When True, we'll automatically initiate additional sessions if more
+        # messages to download.
+        self.autoSession = True
+
+        self.s = serial.Serial(self.portId, 19200, timeout=5)
+
+        if not self._configurePort():
+            self.close()
+            raise RockBlockException()
+
+        self.ping()  # KEEP SACRIFICIAL!
+        self.s.timeout = 60
+
+        if not self.ping():
+            self.close()
+            raise RockBlockException()
+
+        self._do_callback(RockBlockProtocol.rockBlockConnected)
+
+
+    def ping(self):
+        """Ensure that the connection is still alive."""
+        self._ensureConnectionStatus()
+        return self._send_and_ack_command(b'AT')
+
+
+    def _wait_for_network_time(self):
+        retries = 0
+        while True:
+            if self._isNetworkTimeValid():
+                return True
+
+            retries += 1
+            if retries == TIME_ATTEMPTS:
+                _logger.warning('Failed to get network time after %d retries; '
+                                'giving up.', retries)
+                self._do_callback(RockBlockProtocol.rockBlockSignalUpdate, 0)
+                return False
+
+            _logger.debug('Failed to get network time after try %d; '
+                          'will retry after %d secs.', retries, TIME_DELAY)
+            time.sleep(TIME_DELAY)
+        assert False  # Unreachable.
+
+
+    def wait_for_good_signal(self):
+        retries = 0
+        while True:
+            signal = self.requestSignalStrength()
+            if signal >= SIGNAL_THRESHOLD:
+                return True
+
+            retries += 1
+            if retries == SIGNAL_ATTEMPTS:
+                _logger.warning('Failed to get good signal after %d retries; '
+                                'giving up.', retries)
+                return False
+
+            _logger.debug('Failed to get good signal after try %d; '
+                          'will retry after %d secs.', retries, RESCAN_DELAY)
+            time.sleep(RESCAN_DELAY)
+        assert False  # Unreachable.
+
+
+    def requestSignalStrength(self):
+        signal = self._doRequestSignalStrength()
+        _logger.debug('Signal strength is %d.', signal)
+        self._do_callback(RockBlockProtocol.rockBlockSignalUpdate, signal)
+        return signal
+
+
+    def _doRequestSignalStrength(self):
+        self._ensureConnectionStatus()
+
+        command = b'AT+CSQ'
+        if not self._send_command_and_read_echo(command):
+            return -1
+
+        response = self._read_next_line()
+        if b'+CSQ' not in response or len(response) != 6:
+            _logger.error('Incorrect response to %s: %s', command, response)
+            return -1
+
+        if not self._read_ok(command):
+            return -1
+
+        result = response[5] - ord('0')
+        return result
+
+
+    def messageCheck(self, ack_ring):
+        """
+        Args:
+            ack_ring (bool): Whether this call is acking a ring indicator
+                from the network.  If it is, we need to use the +SBDIXA command
+                rather than +SBDIX.
+        """
+        self._ensureConnectionStatus()
+
+        self._do_callback(RockBlockProtocol.rockBlockRxStarted)
+
+        if self._attemptConnection() and \
+                self._attemptSession(ack_ring=ack_ring):
+            return True
+
+        self._do_callback(RockBlockProtocol.rockBlockRxFailed)
+        return False
+
+
+    def sendMessage(self, msg):
+        assert isinstance(msg, bytes)
+
+        self._ensureConnectionStatus()
+
+        self._do_callback(RockBlockProtocol.rockBlockTxStarted)
+
+        if self._queueMessage(msg) and self._attemptConnection():
+            SESSION_DELAY = 1
+            SESSION_ATTEMPTS = 3
+
+            while True:
+                SESSION_ATTEMPTS -= 1
+                if SESSION_ATTEMPTS == 0:
+                    break
+
+                if self._attemptSession():
+                    return True
+                else:
+                    time.sleep(SESSION_DELAY)
+
+        self._do_callback(RockBlockProtocol.rockBlockTxFailed, -1)
+        return False
+
+
+    def getSerialIdentifier(self):
+        self._ensureConnectionStatus()
+
+        command = b'AT+GSN'
+        if not self._send_command_and_read_echo(command):
+            return None
+
+        response = self._read_next_line()
+        if not self._read_ok(command):
+            return None
+        return response.decode('ascii')
+
+
+    # One-time initial setup function (Disables Flow Control)
+    # This only needs to be called once, as is stored in non-volitile memory
+
+    # Make sure you DISCONNECT RockBLOCK from power for a few minutes after
+    # this command has been issued...
+    def setup(self):
+        self._ensureConnectionStatus()
+
+        # Disable Flow Control
+        if not self._send_and_ack_command(b'AT&K0'):
+            return False
+
+        # Store Configuration into Profile0
+        if not self._send_and_ack_command(b'AT&W0'):
+            return False
+
+        # Use Profile0 as default
+        if not self._send_and_ack_command(b'AT&Y0'):
+            return False
+
+        # Flush Memory
+        if not self._send_and_ack_command(b'AT*F'):
+            return False
+
+        return True
+
+
+    def close(self):
+        if self.s is not None:
+            self.s.close()
+            self.s = None
+
+
+    @staticmethod
+    def listPorts():
+
+        if sys.platform.startswith('win'):
+            ports = ['COM' + str(i + 1) for i in range(256)]
+        elif (sys.platform.startswith('linux') or
+              sys.platform.startswith('cygwin')):
+            ports = glob.glob('/dev/tty[A-Za-z]*')
+        elif sys.platform.startswith('darwin'):
+            ports = glob.glob('/dev/tty.*')
+
+        result = []
+
+        for port in ports:
+            try:
+                s = serial.Serial(port)
+                s.close()
+                result.append(port)
+            except (OSError, serial.SerialException):
+                pass
+
+        return result
+
+
+    def _queueMessage(self, msg):
+        self._ensureConnectionStatus()
+
+        msg_len = len(msg)
+        if msg_len > 340:
+            _logger.warning('Message is longer than 340 bytes; rejecting it.')
+            return False
+
+        msg_len_bytes = bytes(str(msg_len), 'ascii')
+        command = b'AT+SBDWB=' + msg_len_bytes
+        self._send_command(command)
+
+        if (self._read_next_line() != command or
+                self._read_next_line() != b'READY'):
+            return False
+
+        checksum = 0
+        for b in msg:
+            checksum += b
+
+        # _logger.debug('RockBLOCK: queuing message: %s', msg)
+        self.s.write(msg)
+        self.s.write(checksum.to_bytes(2, byteorder='big'))
+
+        result = (self._read_next_line() == b'0')
+        if not self._read_ok(command):
+            return False
+        return result
+
+
+    def _configurePort(self):
+        return (self._enableEcho() and self._disableFlowControl and
+                self._enableRingAlerts() and self.ping())
+
+
+    def _enableEcho(self):
+        self._ensureConnectionStatus()
+
+        command = b'ATE1'
+        self._send_command(command)
+        response = self._read_next_line()
+        if response == command or response == b'':
+            return self._read_ok(command)
+        else:
+            _logger.error('Failed to enable echo; got response %s', response)
+            return False
+
+
+    def _disableFlowControl(self):
+        self._ensureConnectionStatus()
+        return self._send_and_ack_command(b'AT&K0')
+
+
+    def _enableRingAlerts(self):
+        self._ensureConnectionStatus()
+        return self._send_and_ack_command(b'AT+SBDMTA=1')
+
+
+    def _attemptSession(self, ack_ring=False):
+        self._ensureConnectionStatus()
+
+        SESSION_ATTEMPTS = 3
+
+        while True:
+            if SESSION_ATTEMPTS == 0:
+                return False
+
+            SESSION_ATTEMPTS -= 1
+
+            command = b'AT+SBDIXA' if ack_ring else b'AT+SBDIX'
+            if not self._send_command_and_read_echo(command):
+                return False
+
+            response = self._read_next_line()
+            if not response.startswith(b'+SBDIX: '):
+                _logger.error('Got bad response when creating session: %s',
+                              response)
+                return False
+
+            if not self._read_ok(command):
+                return False
+
+            # +SBDIX: <MO status>, <MOMSN>, <MT status>, <MTMSN>, <MT length>,
+            # <MTqueued>
+            response = response[len(b'+SBDIX: '):]
+            parts = response.split(b',')
+            if len(parts) != 6:
+                _logger.error('Got bad parts in response when creating '
+                              'session: %s / %s.', response, parts)
+                return False
+            (moStatus, moMsn, mtStatus, mtMsn, mtLength, mtQueued) = \
+                map(int, parts)
+
+            # Mobile Originated
+            if moStatus <= 4:
+                self._clearMoBuffer()
+                self._do_callback(RockBlockProtocol.rockBlockTxSuccess, moMsn)
+            else:
+                _logger.warning('Got moStatus %d', moStatus)
+                self._do_callback(RockBlockProtocol.rockBlockTxFailed,
+                                  moStatus)
+
+            if mtStatus == 1 and mtLength > 0:
+                # SBD message successfully received from the GSS.
+                _logger.debug('Will process message %s', mtMsn)
+                self._processMtMessage(mtMsn)
+
+            # AUTOGET NEXT MESSAGE
+
+            self._do_callback(RockBlockProtocol.rockBlockRxMessageQueue,
+                              mtQueued)
+
+            # There are additional MT messages to queued to download
+            if mtQueued > 0 and self.autoSession:
+                self._attemptSession()
+
+            if moStatus <= 4:
+                return True
+
+        assert False  # Unreachable, while (True) above.
+
+
+    def _attemptConnection(self):
+        self._ensureConnectionStatus()
+        return self._wait_for_network_time() and self.wait_for_good_signal()
+
+
+    def _processMtMessage(self, mtMsn):
+        self._ensureConnectionStatus()
+
+        command = b'AT+SBDRB'
+        self._send_command(command)
+        response = self._read_next_line()
+        if not response.startswith(command + b'\r'):
+            _logger.error('Incorrect echo for %s: %s', command, response)
+            return
+        response = response[(len(command) + 1):]
+
+        if response == b'OK':
+            _logger.warning('No message content.. strange!')
+            content = b''
+        else:
+            msg_len = int.from_bytes(response[:2], byteorder='big')
+            content = response[2:-2]
+            checksum = int.from_bytes(response[-2:], byteorder='big')
+
+            our_msg_len = len(content)
+            if our_msg_len != msg_len:
+                _logger.warning(
+                    'Ignoring message length mismatch! %s != %s in message %s',
+                    our_msg_len, msg_len, response)
+
+            our_checksum = sum(map(int, content)) & 0xffff
+            if our_checksum != checksum:
+                _logger.warning(
+                    'Ignoring checksum failure! %s != %s in message %s',
+                    our_checksum, checksum, response)
+
+            if not self._read_ok(command):
+                return False
+
+        self._do_callback(RockBlockProtocol.rockBlockRxReceived, mtMsn,
+                          content)
+
+
+    def _isNetworkTimeValid(self):
+        self._ensureConnectionStatus()
+
+        command = b'AT-MSSTM'
+        if not self._send_command_and_read_echo(command):
+            return False
+
+        response = self._read_next_line()
+        if response.startswith(b'-MSSTM'):
+            # -MSSTM: a5cb42ad / no network service
+            if not self._read_ok(command):
+                return False
+
+            if len(response) == 16:
+                return True
+
+        return False
+
+
+    def _clearMoBuffer(self):
+        self._ensureConnectionStatus()
+
+        command = b'AT+SBDD0'
+        if not self._send_command_and_read_echo(command):
+            return False
+
+        if self._read_next_line() != b'0':
+            return False
+
+        return self._read_ok(command)
+
+
+    def _send_and_ack_command(self, cmd):
+        self._send_command(cmd)
+        return self._read_ack(cmd)
+
+
+    def _send_command_and_read_echo(self, cmd):
+        self._send_command(cmd)
+        return self._read_echo(cmd)
+
+
+    def _ensureConnectionStatus(self):
+        if self.s is None or not self.s.isOpen():
+            raise RockBlockException()
+
+
+    def _send_command(self, cmd):
+        # _logger.debug('RockBLOCK: sending cmd: %s', cmd)
+        self.s.write(cmd + b'\r')
+
+
+    def _read_next_line(self):
+        """Read the next line, and return it with the trailing newline
+           stripped."""
+        result = self.s.readline().rstrip()
+        # _logger.debug('RockBLOCK: read line %s', result)
+        if result == b'SBDRING' or result == b'':
+            # Unsolicited ring notification.  Ignore it, we're using the GPIO
+            # pin so we already know.
+            # Or a blank line.  Ignore them because we're either getting
+            # spurious ones or you get one before the SBDRING (not sure which).
+            return self._read_next_line()
+        return result
+
+
+    def _read_ack(self, cmd):
+        """Read the next two lines, checking that the first is the given cmd
+           echoed back, and the next is b'OK'."""
+        return (self._read_echo(cmd) and
+                self._read_ok(cmd))
+
+
+    def _read_echo(self, cmd):
+        """Read the next line, checking that it matches the given cmd."""
+        response = self._read_next_line()
+        result = response == cmd
+        if not result:
+            _logger.error('Incorrect echo for %s: %s', cmd, response)
+        return result
+
+
+    def _read_ok(self, cmd):
+        """Read the next line, checking that it is b'OK'."""
+        response = self._read_next_line()
+        result = response == b'OK'
+        if not result:
+            _logger.error('Got %s when expecting OK in response to %s',
+                          response, cmd)
+        return result
+
+
+    def _do_callback(self, f, *args):
+        do_callback(self.callback, f, *args)

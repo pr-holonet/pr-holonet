@@ -14,5 +14,6 @@ setup(
 
     packages=find_packages(exclude=['.eggs']),
 
-    setup_requires=['setuptools-pep8', 'setuptools-lint'],
+    setup_requires=['pytest-runner', 'setuptools-pep8', 'setuptools-lint'],
+    tests_require=['pytest'],
 )

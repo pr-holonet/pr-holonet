@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}System settings{% endblock %}
+{% block content %}
+<img src="static/pr-holonet.png" class="logo-float-right">
+<p><a href="/">Back to main menu</a></p>
+<h1>System settings</h1>
+
+<h2>System health</h2>
+
+<div class="col-md-6">
+<div class="panel panel-default">
+<div class="panel-heading">Satellite connection</div>
+<div class="panel-body">
+<table class="table table-hover">
+<tbody>
+<tr><td>RockBLOCK status</td><td>{{ rockblock_status }}</tr>
+<tr><td>RockBLOCK serial number</td><td>{{ rockblock_serial }}</tr>
+<tr><td>Signal strength</td><td>{{ signal }} ({{ signal * 20 }}%)</td></tr>
+</tbody>
+</table>
+</div><!-- panel-body -->
+</div><!-- panel -->
+</div><!-- col -->
+
+<div class="col-md-6">
+<div class="panel panel-default">
+<div class="panel-heading">Wi-Fi connection</div>
+<div class="panel-body">
+<table class="table table-hover">
+<tbody>
+<tr><td>Wi-Fi MAC address</td><td>{{ wlan_mac }}</tr>
+<tr><td>Network name</td><td>{{ essid }}</tr>
+</tbody>
+</table>
+</div><!-- panel-body -->
+</div><!-- panel -->
+</div><!-- col -->
+
+{% endblock %}

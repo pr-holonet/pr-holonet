@@ -1,10 +1,13 @@
 import logging
 from logging.handlers import RotatingFileHandler
 import os
+import os.path
 
-from flask import Flask, redirect, render_template, request, url_for
+from flask import Flask, redirect, render_template, request, \
+    send_from_directory, url_for
+from flask_webpack import Webpack
 
-from holonet import mailboxes, queue_manager
+from holonet import mailboxes, queue_manager, system_manager
 from holonet.utils import printable_phone_number
 
 
@@ -14,8 +17,13 @@ HOLONET_LOG_LEVEL = logging.DEBUG
 
 is_flask_subprocess = os.environ.get('WERKZEUG_RUN_MAIN') == 'true'
 is_gunicorn = "gunicorn" in os.environ.get("SERVER_SOFTWARE", "")
+thisdir = os.path.abspath(os.path.dirname(__file__))
 
+webpack = Webpack()
 app = Flask(__name__)
+app.config['WEBPACK_MANIFEST_PATH'] = \
+    os.path.join(thisdir, 'build', 'manifest.json')
+webpack.init_app(app)
 
 holonet_logger = logging.getLogger('holonet')
 holonet_logger.setLevel(HOLONET_LOG_LEVEL)
@@ -53,9 +61,6 @@ def index():
     pending = queue_manager.message_pending_senders.keys()
     pending_printable = _printable_phone_number_dict(pending)
     signal = queue_manager.last_known_signal_strength
-    rockblock_serial = queue_manager.rockblock_serial_identifier or "Unknown"
-    rockblock_status = queue_manager.last_known_rockblock_status
-    rockblock_err = queue_manager.last_txfailed_mo_status
 
     return render_template('index.html',
                            outbox=outbox,
@@ -63,14 +68,17 @@ def index():
                            pending_printable=pending_printable,
                            recipients=recipients,
                            recipients_printable=recipients_printable,
-                           signal=signal,
-                           rockblock_err=rockblock_err,
-                           rockblock_serial=rockblock_serial,
-                           rockblock_status=rockblock_status)
+                           signal=signal)
 
 
 def _printable_phone_number_dict(nos):
     return dict(map(lambda x: (x, printable_phone_number(x)), nos))
+
+
+@app.route("/assets/<path:filename>")
+def send_asset(filename):
+    return send_from_directory(os.path.join(thisdir, 'build', 'public'),
+                               filename)
 
 
 @app.route('/send_message', methods=['POST'])
@@ -97,6 +105,16 @@ def send_receive():
     queue_manager.get_messages(ack_ring=False)
 
     return _response_return_to_previous()
+
+
+@app.route('/system')
+def system():
+    # Note that this is an async request to refresh the signal strength,
+    # same as index() above.
+    queue_manager.request_signal_strength()
+
+    status = system_manager.get_system_status()
+    return render_template('system.html', **status)
 
 
 @app.route('/test')
@@ -150,4 +168,5 @@ def _response_return_to_previous():
 
 if __name__ == '__main__':
     app.jinja_env.auto_reload = True
-    app.run(debug=True, host='0.0.0.0')
+    app.run(debug=True, host='0.0.0.0',
+            extra_files=[app.config["WEBPACK_MANIFEST_PATH"]])

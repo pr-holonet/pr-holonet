@@ -1,8 +1,6 @@
-<!doctype html>
-<head>
-<title>Holonet test</title>
-</head>
-<body>
+{% extends "base.html" %}
+{% block title %}HoloNet test{% endblock %}
+{% block content %}
 <h1>Messages in outbox</h1>
 {% for msg in outbox %}
 <p><a href="/test/{{ msg.filename }}">{{ msg.filename }}</a>: {{ msg.timestamp }} {{ msg.local_user }} &rarr; {{ msg.recipient }}: {{ msg.body }}</p>
@@ -32,6 +30,4 @@ Recipient: <input name="recipient" type="text">
 <form action="/send_receive" method="post">
 <input type="submit" value="Sync">
 </form>
-
-</body>
-</html>
+{% endblock %}

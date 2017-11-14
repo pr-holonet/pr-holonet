@@ -1,0 +1,22 @@
+{
+  "name": "holonet-web",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "babel-core": "^6.26.0",
+    "babel-loader": "^7.1.2",
+    "bootstrap": "^3.3.7",
+    "css-loader": "^0.28.7",
+    "extract-text-webpack-plugin": "^3.0.2",
+    "file-loader": "^1.1.5",
+    "jquery": "^3.2.1",
+    "manifest-revision-webpack-plugin": "^0.4.1",
+    "node-normalize-scss": "^3.0.0",
+    "scss-base": "^1.3.4",
+    "style-loader": "^0.19.0",
+    "sync-exec": "^0.6.2",
+    "url-loader": "^0.6.2",
+    "webpack": "^3.8.1"
+  }
+}

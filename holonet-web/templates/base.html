@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+<title>{% block title %}{% endblock %}</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+{{ stylesheet_tag("bootstrap_css") | safe }}
+{{ stylesheet_tag("base_css") | safe }}
+</head>
+<body>
+<div id='content'>{% block content %}{% endblock %}</div>
+
+{{ javascript_tag("jquery_js") | safe }}
+{{ javascript_tag("popper_js") | safe }}
+{{ javascript_tag("bootstrap_js") | safe }}
+{{ javascript_tag("base_js") | safe }}
+</body>
+</html>

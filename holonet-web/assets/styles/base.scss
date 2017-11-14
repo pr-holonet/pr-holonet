@@ -1,0 +1,58 @@
+@import "~bootstrap/dist/css/bootstrap.css";
+
+@function asset-url($path) {
+  @return url('~!file-loader!' + $path);
+}
+
+@font-face {
+  font-family: 'Source Code Pro';
+  font-style: normal;
+  font-weight: 400;
+  src: local('Source Code Pro'), local('SourceCodePro-Regular'),
+       asset-url('../fonts/source-code-pro-v7-latin-regular.woff2') format('woff2'),
+       asset-url('../fonts/source-code-pro-v7-latin-regular.woff') format('woff');
+}
+@font-face {
+  font-family: 'Source Sans Pro';
+  font-style: normal;
+  font-weight: 400;
+  src: local('Source Sans Pro Regular'), local('SourceSansPro-Regular'),
+       asset-url('../fonts/source-sans-pro-v11-latin-regular.woff2') format('woff2'),
+       asset-url('../fonts/source-sans-pro-v11-latin-regular.woff') format('woff');
+}
+
+* {
+  font-family: 'Source Sans Pro';
+  font-size: 14px;
+  font-style: normal;
+  font-variant: normal;
+  font-weight: 400;
+}
+h1 {
+  font-size: 35px;
+  font-weight: 800;
+  margin-top: 25px;
+}
+h1.title {
+  font-size: 70px;
+}
+h2 {
+  font-size: 30px;
+  font-weight: 200;
+}
+pre {
+  font-family: 'Source Code Pro';
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.logo-float-right {
+  float: right;
+  margin-right: 30px;
+  margin-top: 20px;
+  width: 120px;
+}
+
+div#content {
+  margin: 20px;
+}

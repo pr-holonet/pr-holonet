@@ -1,8 +1,6 @@
-<!doctype html>
-<head>
-<title>{{ recipient_printable }}</title>
-</head>
-<body>
+{% extends "base.html" %}
+{% block title %}{{ recipient_printable }}{% endblock %}
+{% block content %}
 <p><a href="/">Back to all messages</a></p>
 
 <h1>Messages in thread with {{ recipient_printable }}</h1>
@@ -30,6 +28,4 @@ style='color: red'
 <input type="submit" value="Delete">
 </form>
 {% endif %}
-
-</body>
-</html>
+{% endblock %}

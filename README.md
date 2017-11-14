@@ -34,7 +34,8 @@ connects to this to send and receive messages.
 
 It requires Python 3, Flask, phonenumberslite, pyserial,
 and the RPi.GPIO module.  In production deployments we use Gunicorn and
-supervisord.
+supervisord.  The frontend uses yarn for package management, with
+bootstrap and webpack.
 
 ### Installation instructions
 
@@ -43,13 +44,16 @@ log files and mailboxes placed in `/var/opt/pr-holonet`.
 
 ```
 # As root:
-apt-get install python3 python3-flask gunicorn3 python3-rpi.gpio supervisor
+apt-get install python3 python3-flask gunicorn3 python3-rpi.gpio supervisor \
+    yarn
 pip3 install phonenumberslite
 
 mkdir -p /opt/pr-holonet
 mkdir -p /var/opt/pr-holonet/log
 
 # Place the holonet-web source code in /opt/pr-holonet/holonet-web.
+cd /opt/pr-holonet/holonet-web
+yarn install
 
 ln -s /opt/pr-holonet/holonet-web/pr-holonet-web.conf /etc/supervisor/conf.d/
 service supervisor reload
@@ -61,7 +65,7 @@ You can run the app using the Flask debug server.  If you don't have
 a RockBLOCK attached and aren't running on a Raspberry Pi, then those
 parts will just disable themselves.
 
-We use pycodestyle, pylint, pytest, and setuptools.
+We use pycodestyle, pylint, pytest, setuptools, webpack, and yarn.
 
 ```
 # Create and activate a virtualenv if you want.
@@ -69,6 +73,7 @@ pip3 install --user flask phonenumberslite pycodestyle pylint pyserial \
     pytest RPi.GPIO setuptools
 
 cd pr-holonet/holonet-web
+yarn install
 
 pycodestyle
 python3 setup.py lint

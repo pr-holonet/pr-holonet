@@ -1,25 +1,15 @@
-<!doctype html>
-<head>
-<title>HoloNet</title>
-<style>
-@font-face {
-font-family: 'NHLSabres';
-src: url('static/NHLSabres.ttf');  
-}
-</style>
-</head>
-<body>
-<img src="/static/pr-holonet.png" style="float:right; width: 120px;">
-<h1 style="font-family: 'NHLSabres'; font-size: 80px; }">Puerto Rico<br>HoloNet</h1>
+{% extends "base.html" %}
+{% block title %}HoloNet{% endblock %}
+{% block content %}
+<img src="static/pr-holonet.png" class="logo-float-right">
+<h1 class='title'>Puerto Rico<br>HoloNet</h1>
 
 <br clear='both'>
 
 <h2>System health</h2>
 
-<p>RockBLOCK status: {{ rockblock_status }}.</p>
-<p>RockBLOCK serial number: {{ rockblock_serial }}.</p>
 <p>Signal strength: {{ signal }}.</p>
-<p>RockBLOCK error: {{ rockblock_err }}.</p>
+<p><a href="/system">System settings</a></p>
 
 {% if pending %}
 <h2>Unread messages</h2>
@@ -65,6 +55,4 @@ src: url('static/NHLSabres.ttf');
 <form action="/send_receive" method="post">
 <p>Send and receive messages now: <input type="submit" value="Refresh"></p>
 </form>
-
-</body>
-</html>
+{% endblock %}

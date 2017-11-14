@@ -3,7 +3,7 @@ import logging
 
 try:
     import RPi.GPIO as GPIO
-except ImportError:
+except (ImportError, RuntimeError):
     from . import mockGPIO as GPIO
 
 from .utils import do_callback

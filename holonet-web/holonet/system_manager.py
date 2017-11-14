@@ -27,7 +27,6 @@ def _get_wlan_properties():
 
 
 def _get_essid(out):
-    print(out)
     m = re.search('ssid (.*)', out)
     if m is None:
         return None

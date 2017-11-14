@@ -12,7 +12,7 @@ setup(
     description='',
     long_description='',
 
-    packages=find_packages(exclude=['.eggs']),
+    packages=find_packages(exclude=['.eggs', 'node_modules']),
 
     setup_requires=['pytest-runner', 'setuptools-pep8', 'setuptools-lint'],
     tests_require=['pytest'],

@@ -13,6 +13,10 @@ from .utils import mkdir_p, normalize_phone_number, timestamp_filename, \
 
 MAILBOXES_ROOT = '/var/opt/pr-holonet/mailboxes'
 
+
+# Will be overridden by app.py for non-Gunicorn builds.
+mailboxes_root = MAILBOXES_ROOT
+
 _logger = logging.getLogger('holonet.mailboxes')
 
 
@@ -256,10 +260,10 @@ def _write_file(path, data):
 
 def _path_of_mailbox(kind):
     kind_label = _label_of_kind(kind)
-    return os.path.join(MAILBOXES_ROOT, kind_label)
+    return os.path.join(mailboxes_root, kind_label)
 
 def _path_of_threadboxes(local_user):
-    return os.path.join(MAILBOXES_ROOT, local_user, 'thread')
+    return os.path.join(mailboxes_root, local_user, 'thread')
 
 def _path_of_threadbox(local_user, remote_user):
     return os.path.join(_path_of_threadboxes(local_user), remote_user)

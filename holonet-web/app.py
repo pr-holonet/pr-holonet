@@ -29,6 +29,10 @@ if is_gunicorn:
     holonet_logger.addHandler(handler)
     app.logger.addHandler(handler)
 
+if not is_gunicorn:
+    mailboxes.mailboxes_root = \
+        os.path.abspath(os.path.join(thisdir, '..', 'mailboxes'))
+
 if is_flask_subprocess or is_gunicorn:
     queue_manager.start(app.config.get('ROCKBLOCK_DEVICE'))
 

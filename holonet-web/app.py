@@ -87,6 +87,12 @@ def send_asset(filename):
                                filename)
 
 
+@app.route('/network_configure', methods=['POST'])
+def network_configure():
+    system_manager.configure_network(request.form)
+    return _response_return_to_previous()
+
+
 @app.route('/send_message', methods=['POST'])
 def send_message():
     body = request.form.get('body')

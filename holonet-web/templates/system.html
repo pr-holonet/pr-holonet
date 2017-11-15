@@ -42,7 +42,7 @@
 
 <div class="col-md-6">
 <div class="panel panel-default">
-<div class="panel-heading">Wi-fi access point</div>
+<div class="panel-heading">Wi-Fi access point</div>
 <div class="panel-body">
 <form action="/system_configure" method="post">
 <table class="table table-hover">
@@ -64,6 +64,43 @@
 
 </form>
 
+</div><!-- panel-body -->
+</div><!-- panel -->
+</div><!-- col -->
+
+<br clear='both'>
+
+<div class="col-md-6">
+<div class="panel panel-default">
+<div class="panel-heading">Wi-Fi network passwords</div>
+<div class="panel-body">
+<table class="table table-hover">
+<thead>
+<tr><th>Network name</th><th>Network password</th>
+<th>&nbsp;</th><th>&nbsp;</th></tr>
+</thead>
+<tbody>
+{% for ssid, props in wpa_props.items() %}
+<form action="/network_configure" method="post">
+<input name='ssid' type='hidden' value='{{ ssid }}'>
+<tr>
+<td>{{ ssid }}</td>
+<td><input name='psk' type='text' value='{{ props['psk'] }}'></td>
+<td><input name='action' type='submit' value='Save'></td>
+<td><input name='action' type='submit' value='Delete'></td>
+</tr>
+</form>
+{% endfor %}
+<form action="/network_configure" method="post">
+<tr>
+<td><input name='ssid' type='text' value=''></td>
+<td><input name='psk' type='text' value=''></td>
+<td><input name='action' type='submit' value='Add'></td>
+<td>&nbsp;</td>
+</tr>
+</form>
+</tbody>
+</table>
 </div><!-- panel-body -->
 </div><!-- panel -->
 </div><!-- col -->

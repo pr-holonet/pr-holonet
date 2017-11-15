@@ -1,3 +1,4 @@
+import codecs
 import json
 import logging
 import os.path
@@ -11,6 +12,7 @@ from holonet.utils import mkdir_p, rm_f
 
 AP_CONFIG_FILE = 'ap.json'
 SYSTEM_MANAGER_ROOT = '/var/opt/pr-holonet/system_manager'
+WPA_SUPPLICANT_CONF = '/etc/wpa_supplicant/wpa_supplicant.conf'
 WLAN_DEVICE = 'wlan0'
 
 # Will be overridden by app.py for non-Gunicorn builds.
@@ -32,6 +34,7 @@ def get_system_status():
     network_mode = _get_network_mode()
     ap_settings = _get_ap_settings()
     (essid, wlan_mac, wlan_ip_addr) = _get_wlan_properties()
+    wpa_props = _get_wpa_properties()
 
     result = dict(locals())
     result.update(ap_settings)
@@ -69,6 +72,38 @@ def _get_ap_settings():
     return d
 
 
+def configure_network(settings):
+    ssid = settings.get('ssid')
+    psk = settings.get('psk')
+    action = settings.get('action')
+    if not ssid:
+        return
+
+    _run_cmd(['/bin/sed', '-i', '-n',
+              '1 !H;1 h;$ {x;s/[[:space:]]*network={\\n[[:space:]]*'
+              'ssid=%s[^}]*}//g;p;}' % json.dumps(ssid),
+              WPA_SUPPLICANT_CONF], safe=True)
+
+    if action == 'Delete':
+        return
+
+    with open(WPA_SUPPLICANT_CONF, 'a') as f:
+        f.write('''
+network={
+    ssid=%s
+''' % json.dumps(ssid))
+        if psk:
+            f.write('''
+    psk=%s
+    key_mgmt=WPA-PSK
+''' % json.dumps(psk))
+        f.write('''
+}
+''')
+
+    _run_cmd(['/sbin/wpa_cli', 'reconfigure'], safe=True)
+
+
 def set_ap_settings(settings):
     d = _get_ap_settings()
 
@@ -94,7 +129,7 @@ def set_ap_settings(settings):
 
 def _get_wlan_properties():
     p = _run_cmd(['/sbin/wpa_cli', '-i', WLAN_DEVICE, 'status'], safe=True)
-    if p.returncode != 0:
+    if p is None or p.returncode != 0:
         return ('<Unknown>', '<Unknown>', '<Unknown>')
     out = p.stdout.decode('utf-8')
     return _extract_wlan_properties(out)
@@ -106,6 +141,40 @@ def _extract_wlan_properties(out):
     return (props.get('ssid', '<Unknown>'),
             props.get('address', '<Unknown>'),
             props.get('ip_address', '<Unknown>'))
+
+
+def _get_wpa_properties():
+    try:
+        with open(WPA_SUPPLICANT_CONF, 'r') as f:
+            content = f.read()
+    except FileNotFoundError:
+        return {}
+    return _extract_wpa_properties(content)
+
+
+def _extract_wpa_properties(out):
+
+    def _dequote(v):
+        if v.startswith('"') and v.endswith('"'):
+            return codecs.getdecoder('unicode_escape')(v[1:-1])[0]
+        else:
+            return v.strip()
+
+    def _dequote_all(vs):
+        return [_dequote(v) for v in vs]
+
+    result = {}
+    for match in re.finditer('network={([^}]+)}', out):
+        block = match.group(1)
+        lines = block.split('\n')
+        props = dict([_dequote_all(l.split('=', 1))
+                      for l in lines if '=' in l])
+        if 'ssid' in props:
+            ssid = props['ssid']
+            other_props = dict(props)
+            del other_props['ssid']
+            result[ssid] = other_props
+    return result
 
 
 def _disable_ap():
@@ -130,8 +199,8 @@ slaac private
     _write_file('/etc/network/interfaces.d/%s' % WLAN_DEVICE, '''
 allow-hotplug %s
 iface %s inet dhcp
-wpa-conf /etc/wpa_supplicant/wpa_supplicant.conf
-''' % (WLAN_DEVICE, WLAN_DEVICE))
+wpa-conf %s
+''' % (WLAN_DEVICE, WLAN_DEVICE, WPA_SUPPLICANT_CONF))
 
     _run_cmd(['/sbin/ifup', WLAN_DEVICE], timeout=60)
     _run_cmd(['/usr/sbin/service', 'dhcpcd', 'start'], timeout=60)
@@ -227,9 +296,12 @@ def _run_cmd(cmdline, safe=False, timeout=2):
         _logger.debug('Refusing %s; safety catch is on.', ' '.join(cmdline))
         return
     _logger.debug('Running %s', ' '.join(cmdline))
-    return subprocess.run(
-        cmdline, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        timeout=timeout)
+    try:
+        return subprocess.run(
+            cmdline, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=timeout)
+    except FileNotFoundError:
+        return None
 
 
 if __name__ == '__main__':

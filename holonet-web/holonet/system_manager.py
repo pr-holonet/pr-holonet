@@ -31,7 +31,7 @@ def get_system_status():
 
     network_mode = _get_network_mode()
     ap_settings = _get_ap_settings()
-    (essid, wlan_mac) = _get_wlan_properties()
+    (essid, wlan_mac, wlan_ip_addr) = _get_wlan_properties()
 
     result = dict(locals())
     result.update(ap_settings)
@@ -93,28 +93,19 @@ def set_ap_settings(settings):
 
 
 def _get_wlan_properties():
-    p = _run_cmd(['/sbin/iw', 'dev', WLAN_DEVICE, 'info'], safe=True)
+    p = _run_cmd(['/sbin/wpa_cli', '-i', WLAN_DEVICE, 'status'], safe=True)
     if p.returncode != 0:
-        return ('<Unknown>', '<Unknown>')
+        return ('<Unknown>', '<Unknown>', '<Unknown>')
     out = p.stdout.decode('utf-8')
-    essid = _get_essid(out)
-    wlan_mac = _get_wlan_mac(out)
-    return (essid or '<Unknown>',
-            wlan_mac or '<Unknown>')
+    return _extract_wlan_properties(out)
 
 
-def _get_essid(out):
-    m = re.search('ssid (.*)', out)
-    if m is None:
-        return None
-    return m.group(1)
-
-
-def _get_wlan_mac(out):
-    m = re.search('addr (.*)', out)
-    if m is None:
-        return "<Unknown>"
-    return m.group(1)
+def _extract_wlan_properties(out):
+    lines = out.split('\n')
+    props = dict([l.split('=', 1) for l in lines if '=' in l])
+    return (props.get('ssid', '<Unknown>'),
+            props.get('address', '<Unknown>'),
+            props.get('ip_address', '<Unknown>'))
 
 
 def _disable_ap():

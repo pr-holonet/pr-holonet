@@ -119,8 +119,11 @@ def _disable_ap():
     _stop_all_network_services()
     _rm_network_configs()
 
+    _write_file('/etc/default/dnsmasq', '''
+ENABLED=0
+''')
     _write_file('/etc/dhcpcd.conf', '''
-ihostname
+hostname
 clientid
 persistent
 option rapid_commit
@@ -145,12 +148,9 @@ def _enable_ap(ap_name, ap_password):
     _stop_all_network_services()
     _rm_network_configs()
 
-    _write_file('/etc/dhcpcd.conf', '''
-denyinterfaces %s
-''' % WLAN_DEVICE)
-    _write_file('/etc/dnsmasq.conf', '''
-interface=%s
-  dhcp-range=192.168.0.2,192.168.0.100,255.255.255.0,24h
+    _write_file('/etc/default/dnsmasq', '''
+ENABLED=1
+CONFIG_DIR=/etc/dnsmasq.d,.dpkg-dist,.dpkg-old,.dpkg-new
 ''' % WLAN_DEVICE)
     _write_file('/etc/default/hostapd', '''
 interface=%s
@@ -168,6 +168,13 @@ wpa_key_mgmt=WPA-PSK
 wpa_pairwise=TKIP
 rsn_pairwise=CCMP
 ''' % (WLAN_DEVICE, ap_name, ap_password))
+    _write_file('/etc/dhcpcd.conf', '''
+denyinterfaces %s
+''' % WLAN_DEVICE)
+    _write_file('/etc/dnsmasq.conf', '''
+interface=%s
+  dhcp-range=192.168.0.2,192.168.0.100,255.255.255.0,24h
+''' % WLAN_DEVICE)
     _write_file('/etc/network/interfaces.d/%s' % WLAN_DEVICE, '''
 allow-hotplug %s
 iface %s inet static
@@ -197,6 +204,7 @@ def _rm_network_configs():
         _logger.debug('Refusing _rm_network_configs; safety catch is on.')
         return
     files = [
+        '/etc/default/dnsmasq',
         '/etc/default/hostapd',
         '/etc/dhcpcd.conf',
         '/etc/dnsmasq.conf',

@@ -46,9 +46,9 @@ def _get_network_mode():
     except FileNotFoundError:
         return 'unknown'
     if 'denyinterfaces %s' % WLAN_DEVICE in content:
-        return 'client'
-    else:
         return 'ap'
+    else:
+        return 'client'
 
 
 def _get_ap_settings():

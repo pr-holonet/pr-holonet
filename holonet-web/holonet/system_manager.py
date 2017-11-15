@@ -213,6 +213,7 @@ def _rm_network_configs():
         '/etc/network/interfaces.d/%s' % WLAN_DEVICE,
     ]
     for f in files:
+        _logger.debug('rm -f %s', f)
         rm_f(f)
 
 
@@ -221,6 +222,7 @@ def _write_file(filename, content):
         _logger.debug('Refusing _write_file(%s); safety catch is on.',
                       filename)
         return
+    _logger.debug('%s: new content', filename)
     with open(filename, 'w') as f:
         f.write(content)
 
@@ -229,6 +231,7 @@ def _run_cmd(cmdline, safe=False, timeout=2):
     if not safe and safety_catch:
         _logger.debug('Refusing %s; safety catch is on.', ' '.join(cmdline))
         return
+    _logger.debug('Running %s', ' '.join(cmdline))
     return subprocess.run(
         cmdline, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         timeout=timeout)

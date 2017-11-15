@@ -38,8 +38,11 @@ if is_gunicorn:
     app.logger.addHandler(handler)
 
 if not is_gunicorn:
+    dev_root = os.path.join(thisdir, '..')
     mailboxes.mailboxes_root = \
-        os.path.abspath(os.path.join(thisdir, '..', 'mailboxes'))
+        os.path.abspath(os.path.join(dev_root, 'mailboxes'))
+    system_manager.system_manager_root = \
+        os.path.abspath(os.path.join(dev_root, 'system_manager'))
 
 if is_flask_subprocess or is_gunicorn:
     queue_manager.start(app.config.get('ROCKBLOCK_DEVICE'))
@@ -115,6 +118,12 @@ def system():
 
     status = system_manager.get_system_status()
     return render_template('system.html', **status)
+
+
+@app.route('/system_configure', methods=['POST'])
+def system_configure():
+    system_manager.set_ap_settings(request.form)
+    return _response_return_to_previous()
 
 
 @app.route('/test')

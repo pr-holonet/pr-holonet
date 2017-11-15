@@ -54,6 +54,14 @@ def printable_phone_number(s):
     return phonenumbers.format_number(no, fmt)
 
 
+def rm_f(filename):
+    try:
+        os.remove(filename)
+    except OSError as e:
+        if e.errno != errno.ENOENT:
+            raise
+
+
 def utcnow_str():
     return datetime.utcnow().isoformat('T')
 

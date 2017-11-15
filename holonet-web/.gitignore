@@ -1,2 +1,6 @@
+.cache/
+.eggs/
 build/
 node_modules/
+*.egg-info/
+*.pyc

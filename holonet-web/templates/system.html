@@ -9,6 +9,21 @@
 
 <div class="col-md-6">
 <div class="panel panel-default">
+<div class="panel-heading">Wi-Fi connection</div>
+<div class="panel-body">
+<table class="table table-hover">
+<tbody>
+<tr><td>Wi-Fi MAC address</td><td>{{ wlan_mac }}</tr>
+<tr><td>Network name</td><td>{{ essid }}</tr>
+<tr><td>Network mode</td><td>{{ network_mode }}</tr>
+</tbody>
+</table>
+</div><!-- panel-body -->
+</div><!-- panel -->
+</div><!-- col -->
+
+<div class="col-md-6">
+<div class="panel panel-default">
 <div class="panel-heading">Satellite connection</div>
 <div class="panel-body">
 <table class="table table-hover">
@@ -22,16 +37,32 @@
 </div><!-- panel -->
 </div><!-- col -->
 
+<br clear='both'>
+
 <div class="col-md-6">
 <div class="panel panel-default">
-<div class="panel-heading">Wi-Fi connection</div>
+<div class="panel-heading">Wi-fi access point</div>
 <div class="panel-body">
+<form action="/system_configure" method="post">
 <table class="table table-hover">
 <tbody>
-<tr><td>Wi-Fi MAC address</td><td>{{ wlan_mac }}</tr>
-<tr><td>Network name</td><td>{{ essid }}</tr>
+<tr><td>AP enabled:</td><td><input name='ap_enabled' value='true'
+    type='checkbox' {% if ap_enabled %}checked='checked'{% endif %}></tr>
+<tr><td>Network name</td><td><input name='ap_name' type='text'
+                                    value='{{ ap_name }}'></tr>
+<tr><td>Network password</td><td><input name='ap_password' type='text'
+                                        value='{{ ap_password }}'></tr>
 </tbody>
 </table>
+
+<div class="col-md-5">
+</div><!-- col -->
+<div class="col-md-1">
+<input type="submit" value="Save AP settings">
+</div><!-- col -->
+
+</form>
+
 </div><!-- panel-body -->
 </div><!-- panel -->
 </div><!-- col -->

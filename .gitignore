@@ -1,10 +1,2 @@
-.cache
-.coverage
-.eggs
-build/
-dist/
-htmlcov/
 mailboxes/
-test-report.xml
-*.egg-info/
-*.pyc
+system_manager/

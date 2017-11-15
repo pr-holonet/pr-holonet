@@ -44,9 +44,13 @@ log files and mailboxes placed in `/var/opt/pr-holonet`.
 
 ```
 # As root:
-apt-get install python3 python3-flask gunicorn3 python3-rpi.gpio supervisor \
-    yarn
-pip3 install phonenumberslite
+curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
+echo 'deb https://dl.yarnpkg.com/debian/ stable main' \
+    >/etc/apt/sources.list.d/yarn.list
+apt -y update
+apt -y install python3 python3-flask gunicorn3 python3-rpi.gpio \
+    supervisor yarn
+pip3 install flask-webpack phonenumberslite
 
 mkdir -p /opt/pr-holonet
 mkdir -p /var/opt/pr-holonet/log
@@ -54,6 +58,7 @@ mkdir -p /var/opt/pr-holonet/log
 # Place the holonet-web source code in /opt/pr-holonet/holonet-web.
 cd /opt/pr-holonet/holonet-web
 yarn install
+node_modules/webpack/bin/webpack.js
 
 ln -s /opt/pr-holonet/holonet-web/pr-holonet-web.conf /etc/supervisor/conf.d/
 service supervisor reload
@@ -66,14 +71,18 @@ a RockBLOCK attached and aren't running on a Raspberry Pi, then those
 parts will just disable themselves.
 
 We use pycodestyle, pylint, pytest, setuptools, webpack, and yarn.
+Use the same apt commands as above.
 
 ```
 # Create and activate a virtualenv if you want.
-pip3 install --user flask phonenumberslite pycodestyle pylint pyserial \
-    pytest RPi.GPIO setuptools
+pip3 install --user flask flask-webpack phonenumberslite \
+    pycodestyle pylint pyserial pytest RPi.GPIO setuptools
 
 cd pr-holonet/holonet-web
 yarn install
+node_modules/webpack/bin/webpack.js
+# Or for live updates during development:
+node_modules/webpack/bin/webpack.js --watch
 
 pycodestyle
 python3 setup.py lint

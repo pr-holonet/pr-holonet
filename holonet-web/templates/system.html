@@ -80,12 +80,12 @@
 <th>&nbsp;</th><th>&nbsp;</th></tr>
 </thead>
 <tbody>
-{% for ssid, props in wpa_props.items() %}
+{% for ssid in wpa_props | sort %}
 <form action="/network_configure" method="post">
 <input name='ssid' type='hidden' value='{{ ssid }}'>
 <tr>
 <td>{{ ssid }}</td>
-<td><input name='psk' type='text' value='{{ props['psk'] }}'></td>
+<td><input name='psk' type='text' value='{{ wpa_props[ssid]['psk'] }}'></td>
 <td><input name='action' type='submit' value='Save'></td>
 <td><input name='action' type='submit' value='Delete'></td>
 </tr>

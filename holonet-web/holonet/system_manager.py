@@ -16,6 +16,7 @@ WLAN_DEVICE = 'wlan0'
 # Will be overridden by app.py for non-Gunicorn builds.
 system_manager_root = SYSTEM_MANAGER_ROOT
 
+# Will be overridden by app.py for production builds.
 safety_catch = True
 
 _logger = logging.getLogger('holonet.system_manager')
@@ -245,4 +246,5 @@ if __name__ == '__main__':
     _settings = {
         'ap_enabled': len(sys.argv) > 1 and bool(sys.argv[1])
     }
+    safety_catch = False
     set_ap_settings(_settings)

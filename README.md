@@ -90,3 +90,21 @@ python3 setup.py test
 
 python3 app.py
 ```
+
+### Network configuration feature
+
+holonet-web includes a feature where it can reconfigure the Wi-Fi between
+either the default client mode or acting as an access point.
+
+The configuration for this is stored in
+`/var/opt/pr-holonet/system_manager/ap.json`.
+
+If you end up stuck, you can reset the network using:
+
+```
+cd pr-holonet/holonet-web
+# Reset to client mode:
+sudo python3 -m holonet.system_manager
+# Reset to AP mode (using the settings in ap.json):
+sudo python3 -m holonet.system_manager true
+```

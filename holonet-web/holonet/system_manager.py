@@ -153,7 +153,7 @@ def _enable_ap(ap_name, ap_password):
     _write_file('/etc/default/dnsmasq', '''
 ENABLED=1
 CONFIG_DIR=/etc/dnsmasq.d,.dpkg-dist,.dpkg-old,.dpkg-new
-''' % WLAN_DEVICE)
+''')
     _write_file('/etc/default/hostapd', '''
 DAEMON_CONF='/etc/hostapd/hostapd.conf'
 ''')

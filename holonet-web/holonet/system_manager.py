@@ -3,6 +3,7 @@ import logging
 import os.path
 import re
 import subprocess
+import sys
 
 from holonet import queue_manager
 from holonet.utils import mkdir_p, rm_f
@@ -231,3 +232,11 @@ def _run_cmd(cmdline, safe=False, timeout=2):
     return subprocess.run(
         cmdline, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         timeout=timeout)
+
+
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG)
+    _settings = {
+        'ap_enabled': len(sys.argv) > 1 and bool(sys.argv[1])
+    }
+    set_ap_settings(_settings)

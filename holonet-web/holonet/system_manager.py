@@ -141,8 +141,8 @@ iface %s inet dhcp
 wpa-conf /etc/wpa_supplicant/wpa_supplicant.conf
 ''' % (WLAN_DEVICE, WLAN_DEVICE))
 
-    _run_cmd(['/sbin/ifup', WLAN_DEVICE])
-    _run_cmd(['/usr/sbin/service', 'dhcpcd', 'start'])
+    _run_cmd(['/sbin/ifup', WLAN_DEVICE], timeout=60)
+    _run_cmd(['/usr/sbin/service', 'dhcpcd', 'start'], timeout=60)
 
 
 def _enable_ap(ap_name, ap_password):
@@ -184,9 +184,9 @@ iface %s inet static
     network 192.168.0.0
 ''' % (WLAN_DEVICE, WLAN_DEVICE))
 
-    _run_cmd(['/sbin/ifup', WLAN_DEVICE])
-    _run_cmd(['/usr/sbin/service', 'hostapd', 'start'])
-    _run_cmd(['/usr/sbin/service', 'dnsmasq', 'start'])
+    _run_cmd(['/sbin/ifup', WLAN_DEVICE], timeout=60)
+    _run_cmd(['/usr/sbin/service', 'hostapd', 'start'], timeout=60)
+    _run_cmd(['/usr/sbin/service', 'dnsmasq', 'start'], timeout=60)
 
 
 def _stop_all_network_services():
@@ -194,10 +194,10 @@ def _stop_all_network_services():
         _logger.debug(
             'Refusing _stop_all_network_services; safety catch is on.')
         return
-    _run_cmd(['/usr/sbin/service', 'hostapd', 'stop'])
-    _run_cmd(['/usr/sbin/service', 'dnsmasq', 'stop'])
-    _run_cmd(['/usr/sbin/service', 'dhcpcd', 'stop'])
-    _run_cmd(['/sbin/ifdown', WLAN_DEVICE])
+    _run_cmd(['/usr/sbin/service', 'hostapd', 'stop'], timeout=60)
+    _run_cmd(['/usr/sbin/service', 'dnsmasq', 'stop'], timeout=60)
+    _run_cmd(['/usr/sbin/service', 'dhcpcd', 'stop'], timeout=60)
+    _run_cmd(['/sbin/ifdown', WLAN_DEVICE], timeout=60)
 
 
 def _rm_network_configs():

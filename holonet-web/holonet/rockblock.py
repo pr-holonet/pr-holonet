@@ -31,6 +31,7 @@ TIME_DELAY = 1
 SIGNAL_ATTEMPTS = 10
 RESCAN_DELAY = 10
 SIGNAL_THRESHOLD = 2
+SYNC_COMMS_ATTEMPTS = 3
 
 _logger = logging.getLogger('holonet.rockblock')
 
@@ -360,7 +361,20 @@ class RockBlock(object):
 
             command = b'AT+SBDIXA' if ack_ring else b'AT+SBDIX'
             if not self._send_command_and_read_echo(command):
-                return False
+                _logger.warning("Warning: Comms with rockblock out of sync. Attempting ping after 10 second sleep")
+                time.sleep(RESCAN_DELAY)
+                # flush input buffer for any random data received
+                self.s.reset_input_buffer()
+                # Echo or read fail. Try to sync comms again and send the command, otherwise fail
+                system_synced = False
+                for x in range(1, SYNC_COMMS_ATTEMPTS):
+                    system_synced = self.ping()
+                if not system_synced:
+                    _logger.error("Sync Failed")
+                    return False
+                else:
+                    _logger.info("Sync Successful")
+                    self._send_command_and_read_echo(command)
 
             response = self._read_next_line()
             if not response.startswith(b'+SBDIX: '):
@@ -509,14 +523,16 @@ class RockBlock(object):
     def _read_next_line(self):
         """Read the next line, and return it with the trailing newline
            stripped."""
-        result = self.s.readline().rstrip()
+        next_line = self.s.readline().rstrip()
         # _logger.debug('RockBLOCK: read line %s', result)
-        if result == b'SBDRING' or result == b'':
+        if next_line == b'SBDRING' or next_line == b'':
             # Unsolicited ring notification.  Ignore it, we're using the GPIO
             # pin so we already know.
             # Or a blank line.  Ignore them because we're either getting
             # spurious ones or you get one before the SBDRING (not sure which).
             return self._read_next_line()
+        else:
+            result = next_line
         return result
 
 

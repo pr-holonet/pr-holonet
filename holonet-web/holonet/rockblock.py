@@ -29,6 +29,7 @@ from .utils import do_callback
 TIME_ATTEMPTS = 20
 TIME_DELAY = 1
 SIGNAL_ATTEMPTS = 10
+# used for waiting on rockblock to send all data to system
 RESCAN_DELAY = 10
 SIGNAL_THRESHOLD = 2
 SYNC_COMMS_ATTEMPTS = 3
@@ -435,16 +436,20 @@ class RockBlock(object):
 
         command = b'AT+SBDRB'
         self._send_command(command)
+        # wait some time to ensure we get the checksum as well
         response = self._read_next_line()
         if not response.startswith(command + b'\r'):
             _logger.error('Incorrect echo for %s: %s', command, response)
             return
+        _logger.debug('Received message from rockblock: "%s"', response)
         response = response[(len(command) + 1):]
 
         if response == b'OK':
             _logger.warning('No message content.. strange!')
             content = b''
         else:
+            # TODO: Fix checksum, it is broken.
+            # TODO: rewrite the process for getting the data so that bytes are counted as reported by the rockblock
             msg_len = int.from_bytes(response[:2], byteorder='big')
             content = response[2:-2]
             checksum = int.from_bytes(response[-2:], byteorder='big')
@@ -452,10 +457,21 @@ class RockBlock(object):
             our_msg_len = len(content)
             if our_msg_len != msg_len:
                 _logger.warning(
-                    'Ignoring message length mismatch! %s != %s in message %s',
-                    our_msg_len, msg_len, response)
+                    'Ignoring message length mismatch! %s != %s in message %s (parsed as: "%s")',
+                    our_msg_len, msg_len, response, content)
 
             our_checksum = sum(map(int, content)) & 0xffff
+            # Read one more line in case the checksum was in late.
+            # TODO: Handle delayed responses better
+            checksum_read = self._read_next_line()
+            checksum_read = int.from_bytes(checksum_read, byteorder='big')
+            if  checksum_read is not b'':
+                _logger.debug('Delayed checksum received. Reported value is: "%s"', checksum_read)
+                checksum = checksum_read
+                # recalculate our checksum because the string was summed wrong
+                content = response[2:]
+                our_checksum = sum(map(int, content)) & 0xffff
+
             if our_checksum != checksum:
                 _logger.warning(
                     'Ignoring checksum failure! %s != %s in message %s',
@@ -473,7 +489,21 @@ class RockBlock(object):
 
         command = b'AT-MSSTM'
         if not self._send_command_and_read_echo(command):
-            return False
+            # TODO: I probably need to just create a resync_comms method instead of pasting this all over the place
+            _logger.warning("Warning: Comms with rockblock out of sync. Attempting ping after 10 second sleep")
+            time.sleep(RESCAN_DELAY)
+            # flush input buffer for any random data received
+            self.s.reset_input_buffer()
+            # Echo or read fail. Try to sync comms again and send the command, otherwise fail
+            system_synced = False
+            for x in range(1, SYNC_COMMS_ATTEMPTS):
+                system_synced = self.ping()
+            if not system_synced:
+                _logger.error("Sync Failed")
+                return False
+            else:
+                _logger.info("Sync Successful")
+                self._send_command_and_read_echo(command)
 
         response = self._read_next_line()
         if response.startswith(b'-MSSTM'):
@@ -525,7 +555,9 @@ class RockBlock(object):
            stripped."""
         next_line = self.s.readline().rstrip()
         # _logger.debug('RockBLOCK: read line %s', result)
-        if next_line == b'SBDRING' or next_line == b'':
+        # TODO: Need to properly tokenize return strings and make sure they are being properly inspected
+        # TODO: Tokenize string and eval number of words in it. if more than expected comms out of sync
+        if next_line.strip(b'\r') == b'SBDRING' or next_line == b'':
             # Unsolicited ring notification.  Ignore it, we're using the GPIO
             # pin so we already know.
             # Or a blank line.  Ignore them because we're either getting

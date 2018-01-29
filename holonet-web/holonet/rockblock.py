@@ -106,12 +106,10 @@ class RockBlock(object):
 
         self._do_callback(RockBlockProtocol.rockBlockConnected)
 
-
     def ping(self):
         """Ensure that the connection is still alive."""
         self._ensureConnectionStatus()
         return self._send_and_ack_command(b'AT')
-
 
     def _wait_for_network_time(self):
         retries = 0
@@ -131,7 +129,6 @@ class RockBlock(object):
             time.sleep(TIME_DELAY)
         assert False  # Unreachable.
 
-
     def wait_for_good_signal(self):
         retries = 0
         while True:
@@ -150,13 +147,11 @@ class RockBlock(object):
             time.sleep(RESCAN_DELAY)
         assert False  # Unreachable.
 
-
     def requestSignalStrength(self):
         signal = self._doRequestSignalStrength()
         _logger.debug('Signal strength is %d.', signal)
         self._do_callback(RockBlockProtocol.rockBlockSignalUpdate, signal)
         return signal
-
 
     def _doRequestSignalStrength(self):
         self._ensureConnectionStatus()
@@ -176,7 +171,6 @@ class RockBlock(object):
         result = response[5] - ord('0')
         return result
 
-
     def messageCheck(self, ack_ring):
         """
         Args:
@@ -194,7 +188,6 @@ class RockBlock(object):
 
         self._do_callback(RockBlockProtocol.rockBlockRxFailed)
         return False
-
 
     def sendMessage(self, msg):
         assert isinstance(msg, bytes)
@@ -220,7 +213,6 @@ class RockBlock(object):
         self._do_callback(RockBlockProtocol.rockBlockTxFailed, -1)
         return False
 
-
     def getSerialIdentifier(self):
         self._ensureConnectionStatus()
 
@@ -233,10 +225,8 @@ class RockBlock(object):
             return None
         return response.decode('ascii')
 
-
     # One-time initial setup function (Disables Flow Control)
     # This only needs to be called once, as is stored in non-volitile memory
-
     # Make sure you DISCONNECT RockBLOCK from power for a few minutes after
     # this command has been issued...
     def setup(self):
@@ -260,12 +250,10 @@ class RockBlock(object):
 
         return True
 
-
     def close(self):
         if self.s is not None:
             self.s.close()
             self.s = None
-
 
     @staticmethod
     def listPorts():
@@ -289,7 +277,6 @@ class RockBlock(object):
                 pass
 
         return result
-
 
     def _queueMessage(self, msg):
         self._ensureConnectionStatus()
@@ -320,11 +307,9 @@ class RockBlock(object):
             return False
         return result
 
-
     def _configurePort(self):
         return (self._enableEcho() and self._disableFlowControl and
                 self._enableRingAlerts() and self.ping())
-
 
     def _enableEcho(self):
         self._ensureConnectionStatus()
@@ -338,16 +323,13 @@ class RockBlock(object):
             _logger.error('Failed to enable echo; got response %s', response)
             return False
 
-
     def _disableFlowControl(self):
         self._ensureConnectionStatus()
         return self._send_and_ack_command(b'AT&K0')
 
-
     def _enableRingAlerts(self):
         self._ensureConnectionStatus()
         return self._send_and_ack_command(b'AT+SBDMTA=1')
-
 
     def _attemptSession(self, ack_ring=False):
         self._ensureConnectionStatus()
@@ -362,7 +344,8 @@ class RockBlock(object):
 
             command = b'AT+SBDIXA' if ack_ring else b'AT+SBDIX'
             if not self._send_command_and_read_echo(command):
-                _logger.warning("Warning: Comms with rockblock out of sync. Attempting ping after 10 second sleep")
+                _logger.warning("Warning: Comms with rockblock out of sync while trying to transmit %s. Attempting "
+                                "ping after 10 second sleep", command)
                 time.sleep(RESCAN_DELAY)
                 # flush input buffer for any random data received
                 self.s.reset_input_buffer()
@@ -425,13 +408,14 @@ class RockBlock(object):
 
         assert False  # Unreachable, while (True) above.
 
-
     def _attemptConnection(self):
         self._ensureConnectionStatus()
         return self._wait_for_network_time() and self.wait_for_good_signal()
 
-
     def _processMtMessage(self, mtMsn):
+        RESP_CHECKSUM_SIZE = 2
+        RESP_MSG_LEN_SIZE = 2
+
         self._ensureConnectionStatus()
 
         command = b'AT+SBDRB'
@@ -442,47 +426,49 @@ class RockBlock(object):
             _logger.error('Incorrect echo for %s: %s', command, response)
             return
         _logger.debug('Received message from rockblock: "%s"', response)
+        # discard command echo and RC
         response = response[(len(command) + 1):]
 
         if response == b'OK':
             _logger.warning('No message content.. strange!')
-            content = b''
         else:
             # TODO: Fix checksum, it is broken.
             # TODO: rewrite the process for getting the data so that bytes are counted as reported by the rockblock
-            msg_len = int.from_bytes(response[:2], byteorder='big')
-            content = response[2:-2]
-            checksum = int.from_bytes(response[-2:], byteorder='big')
+            reported_msg_len = int.from_bytes(response[:2], byteorder='big')
+            # discard message length (2 bytes)
+            rcvd_msg = response[RESP_MSG_LEN_SIZE:]
+            rcvd_msg_len = len(rcvd_msg)
 
-            our_msg_len = len(content)
-            if our_msg_len != msg_len:
+            if rcvd_msg_len < reported_msg_len + RESP_CHECKSUM_SIZE:
+                _logger.warning("Incomplete message received. Waiting for completion. Holding off for %s s",
+                                str(TIME_DELAY))
+                time.sleep(TIME_DELAY)
+                response += self._read_next_line()
+                _logger.debug("Updated message from rockblock is: \n%s", response)
+                rcvd_msg = response[RESP_MSG_LEN_SIZE:RESP_MSG_LEN_SIZE + reported_msg_len]
+                rcvd_msg_len = len(rcvd_msg)
+                _logger.debug("Captured received message:\n%s", rcvd_msg)
+
+            if rcvd_msg_len < reported_msg_len + RESP_CHECKSUM_SIZE:
                 _logger.warning(
-                    'Ignoring message length mismatch! %s != %s in message %s (parsed as: "%s")',
-                    our_msg_len, msg_len, response, content)
+                    'Ignoring message length mismatch! %s counted != %s reported in message %s (parsed as: "%s")',
+                    rcvd_msg_len, reported_msg_len, response, rcvd_msg)
 
-            our_checksum = sum(map(int, content)) & 0xffff
+            our_checksum = sum(map(int, rcvd_msg[:-RESP_CHECKSUM_SIZE])) & 0xffff
             # Read one more line in case the checksum was in late.
             # TODO: Handle delayed responses better
-            checksum_read = self._read_next_line()
+            checksum_read = response[RESP_MSG_LEN_SIZE + reported_msg_len: RESP_MSG_LEN_SIZE + reported_msg_len + 2]
             checksum_read = int.from_bytes(checksum_read, byteorder='big')
-            if  checksum_read is not b'':
-                _logger.debug('Delayed checksum received. Reported value is: "%s"', checksum_read)
-                checksum = checksum_read
-                # recalculate our checksum because the string was summed wrong
-                content = response[2:]
-                our_checksum = sum(map(int, content)) & 0xffff
 
-            if our_checksum != checksum:
-                _logger.warning(
-                    'Ignoring checksum failure! %s != %s in message %s',
-                    our_checksum, checksum, response)
+            if our_checksum != checksum_read:
+                _logger.warning('Ignoring checksum failure! %s (our calculated checksum) != %s (reported '
+                                'checksum)  in message %s', our_checksum, checksum_read, response)
 
-            if not self._read_ok(command):
-                return False
-
-        self._do_callback(RockBlockProtocol.rockBlockRxReceived, mtMsn,
-                          content)
-
+            if response[:-RESP_CHECKSUM_SIZE] != b'OK':
+                if not self._read_ok(command):
+                    return False
+        rcvd_msg = rcvd_msg[:-RESP_CHECKSUM_SIZE]
+        self._do_callback(RockBlockProtocol.rockBlockRxReceived, mtMsn, rcvd_msg)
 
     def _isNetworkTimeValid(self):
         self._ensureConnectionStatus()
@@ -490,7 +476,8 @@ class RockBlock(object):
         command = b'AT-MSSTM'
         if not self._send_command_and_read_echo(command):
             # TODO: I probably need to just create a resync_comms method instead of pasting this all over the place
-            _logger.warning("Warning: Comms with rockblock out of sync. Attempting ping after 10 second sleep")
+            _logger.warning("Warning: Comms with rockblock out of sync while trying to transmit %s. Attempting ping "
+                            "after 10 second sleep", command)
             time.sleep(RESCAN_DELAY)
             # flush input buffer for any random data received
             self.s.reset_input_buffer()
@@ -516,39 +503,31 @@ class RockBlock(object):
 
         return False
 
-
     def _clearMoBuffer(self):
         self._ensureConnectionStatus()
 
         command = b'AT+SBDD0'
         if not self._send_command_and_read_echo(command):
             return False
-
         if self._read_next_line() != b'0':
             return False
-
         return self._read_ok(command)
-
 
     def _send_and_ack_command(self, cmd):
         self._send_command(cmd)
         return self._read_ack(cmd)
 
-
     def _send_command_and_read_echo(self, cmd):
         self._send_command(cmd)
         return self._read_echo(cmd)
-
 
     def _ensureConnectionStatus(self):
         if self.s is None or not self.s.isOpen():
             raise RockBlockException()
 
-
     def _send_command(self, cmd):
         # _logger.debug('RockBLOCK: sending cmd: %s', cmd)
         self.s.write(cmd + b'\r')
-
 
     def _read_next_line(self):
         """Read the next line, and return it with the trailing newline
@@ -567,13 +546,11 @@ class RockBlock(object):
             result = next_line
         return result
 
-
     def _read_ack(self, cmd):
         """Read the next two lines, checking that the first is the given cmd
            echoed back, and the next is b'OK'."""
         return (self._read_echo(cmd) and
                 self._read_ok(cmd))
-
 
     def _read_echo(self, cmd):
         """Read the next line, checking that it matches the given cmd."""
@@ -583,7 +560,6 @@ class RockBlock(object):
             _logger.error('Incorrect echo for %s: %s', cmd, response)
         return result
 
-
     def _read_ok(self, cmd):
         """Read the next line, checking that it is b'OK'."""
         response = self._read_next_line()
@@ -592,7 +568,6 @@ class RockBlock(object):
             _logger.error('Got %s when expecting OK in response to %s',
                           response, cmd)
         return result
-
 
     def _do_callback(self, f, *args):
         do_callback(self.callback, f, *args)

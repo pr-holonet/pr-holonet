@@ -20,7 +20,7 @@ import glob
 import logging
 import sys
 import time
-
+import traceback
 import serial
 
 from .utils import do_callback
@@ -33,6 +33,7 @@ SIGNAL_ATTEMPTS = 10
 RESCAN_DELAY = 10
 SIGNAL_THRESHOLD = 2
 SYNC_COMMS_ATTEMPTS = 3
+ROCKBLOCK_POWER_BACKOFF = 40
 
 _logger = logging.getLogger('holonet.rockblock')
 
@@ -391,7 +392,7 @@ class RockBlock(object):
 
             if mtStatus == 1 and mtLength > 0:
                 # SBD message successfully received from the GSS.
-                _logger.debug('Will process message %s', mtMsn)
+                _logger.debug('Will process message %s. %s additional messages queued', mtMsn, mtQueued)
                 self._processMtMessage(mtMsn)
 
             # AUTOGET NEXT MESSAGE
@@ -401,7 +402,13 @@ class RockBlock(object):
 
             # There are additional MT messages to queued to download
             if mtQueued > 0 and self.autoSession:
-                self._attemptSession()
+                _logger.debug("Getting signal strength before retrieving remaining %s messages", str(mtQueued))
+                if self.wait_for_good_signal():
+                    _logger.debug(" %s messages queued. Retrieving the next one", str(mtQueued))
+                    self._attemptSession()
+                else:
+                    _logger.warning("Failed to get good signal. Aborting message retrieval. %s messages queued",
+                                    mtQueued)
 
             if moStatus <= 4:
                 return True
@@ -532,19 +539,49 @@ class RockBlock(object):
     def _read_next_line(self):
         """Read the next line, and return it with the trailing newline
            stripped."""
-        next_line = self.s.readline().rstrip()
-        # _logger.debug('RockBLOCK: read line %s', result)
-        # TODO: Need to properly tokenize return strings and make sure they are being properly inspected
-        # TODO: Tokenize string and eval number of words in it. if more than expected comms out of sync
-        if next_line.strip(b'\r') == b'SBDRING' or next_line == b'':
-            # Unsolicited ring notification.  Ignore it, we're using the GPIO
-            # pin so we already know.
-            # Or a blank line.  Ignore them because we're either getting
-            # spurious ones or you get one before the SBDRING (not sure which).
-            return self._read_next_line()
-        else:
-            result = next_line
-        return result
+
+        next_line = None
+        try:
+            next_line = self.s.readline().rstrip()
+        except serial.SerialException as e_thrown:
+            # SerialExceptions tend to occur on the RaspberryPi depending on how it is powered. Backoff for 40 seconds
+            _logger.warning("SerialException detected. Check power and data cabling on your system. \n" + str(e_thrown))
+            _logger.warning("\nTraceback:\n" )
+            traceback.print_last()
+            # backoff of the Rockblock comms once and try SYNC_COMMS_ATTEMPTS times. Else, quit.
+            time.sleep(ROCKBLOCK_POWER_BACKOFF)
+
+            # TODO: build a better design that does not require backing off so much
+            break_now = False
+            for x in range(0,SYNC_COMMS_ATTEMPTS):
+                try:
+                    next_line = self.s.readline().rstrip()
+                except serial.SerialException:
+                    _logger.warning("SerialException recovery failed. Attempt " + str(x) + " of " + str(
+                        SYNC_COMMS_ATTEMPTS))
+                    time.sleep(ROCKBLOCK_POWER_BACKOFF)
+                    if x == SYNC_COMMS_ATTEMPTS:
+                        break
+                else:
+                    break
+
+        finally:
+            # _logger.debug('RockBLOCK: read line %s', result)
+            # TODO: Need to properly tokenize return strings and make sure they are being properly inspected
+            # TODO: Tokenize string and eval number of words in it. if more than expected comms out of sync
+            if next_line is None:
+                _logger.debug("No data read from serial. Trying again")
+                self._read_next_line()
+            elif next_line.strip(b'\r') == b'SBDRING' or next_line == b'':
+                # Unsolicited ring notification.  Ignore it, we're using the GPIO
+                # pin so we already know.
+                # Or a blank line.  Ignore them because we're either getting
+                # spurious ones or you get one before the SBDRING (not sure which).
+                _logger.debug("Ignoring received data. Trying again. \nReceived:\n %s\n", str(next_line))
+                return self._read_next_line()
+            else:
+                result = next_line
+                return result
 
     def _read_ack(self, cmd):
         """Read the next two lines, checking that the first is the given cmd

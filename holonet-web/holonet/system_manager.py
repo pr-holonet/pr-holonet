@@ -269,8 +269,37 @@ rsn_pairwise=CCMP
 denyinterfaces %s
 ''' % WLAN_DEVICE)
     _write_file('/etc/dnsmasq.conf', '''
+# Uncomment this to filter useless windows-originated DNS requests
+# which can trigger dial-on-demand links needlessly.
+# Note that (amongst other things) this blocks all SRV requests,
+# so don't use it if you use eg Kerberos, SIP, XMMP or Google-talk.
+# This option only affects forwarding, SRV records originating for
+# dnsmasq (via srv-host= lines) are not suppressed by it.
+filterwin2k
+
+# If you don't want dnsmasq to read /etc/resolv.conf or any other
+# file, getting its servers from this file instead (see below), then
+# uncomment this.
+no-resolv
+
+# Add domains which you want to force to an IP address here.
+# The example below send any host in double-click.net to a local
+# web-server.
+address=/#/127.0.0.1
+
+# If you want dnsmasq to listen for DHCP and DNS requests only on
+# specified interfaces (and the loopback) give the name of the
+# interface (eg eth0) here.
+# Repeat the line for more than one interface.
+#interface=
 interface=%s
-  dhcp-range=192.168.0.2,192.168.0.100,255.255.255.0,24h
+
+# This is an example of a DHCP range where the netmask is given. This
+# is needed for networks we reach the dnsmasq DHCP server via a relay
+# agent. If you don't know what a DHCP relay agent is, you probably
+# don't need to worry about this.
+#dhcp-range=192.168.0.50,192.168.0.150,255.255.255.0,12h
+dhcp-range=192.168.0.50,192.168.0.100,255.255.255.0,24h
 ''' % WLAN_DEVICE)
     _write_file('/etc/network/interfaces.d/%s' % WLAN_DEVICE, '''
 allow-hotplug %s

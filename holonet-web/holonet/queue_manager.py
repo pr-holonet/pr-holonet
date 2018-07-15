@@ -120,7 +120,18 @@ class QueueManager(rockblock.RockBlockProtocol,
                     self.rockblock = None
                     last_known_rockblock_status = 'Missing'
                     return
-                device = devices[0]
+                # Check if ttyS0 is available and connect to it. That is where our rockblock is at
+                #TODO: write code to test connections for rockblock before selecting.
+                for x in range(0, len(devices)):
+                    if '/dev/ttyS0' == devices[x]:
+                        device = devices[x]
+                if device is None:
+                    _logger.error(
+                        'Cannot find expected RockBlock serial port. ttyS0 not listed. Will muddle on without it'
+                        )
+                    self.rockblock = None
+                    last_known_rockblock_status = 'Missing'
+                    return
             self.rockblock = rockblock.RockBlock(device, self)
             last_known_rockblock_status = 'Installed'
         except serialutil.SerialException as err:

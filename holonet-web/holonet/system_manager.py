@@ -251,7 +251,6 @@ DAEMON_CONF='/etc/hostapd/hostapd.conf'
 ''')
     _write_file('/etc/hostapd/hostapd.conf', '''
 interface=%s
-driver=nl80211
 ssid=%s
 hw_mode=g
 channel=7
@@ -299,14 +298,14 @@ interface=%s
 # agent. If you don't know what a DHCP relay agent is, you probably
 # don't need to worry about this.
 #dhcp-range=192.168.0.50,192.168.0.150,255.255.255.0,12h
-dhcp-range=192.168.0.50,192.168.0.100,255.255.255.0,24h
+dhcp-range=187.168.0.50,187.168.0.100,255.255.255.0,12h
 ''' % WLAN_DEVICE)
     _write_file('/etc/network/interfaces.d/%s' % WLAN_DEVICE, '''
 allow-hotplug %s
 iface %s inet static
-    address 192.168.0.1
+    address 187.168.0.1
     netmask 255.255.255.0
-    network 192.168.0.0
+    network 187.168.0.0
 ''' % (WLAN_DEVICE, WLAN_DEVICE))
 
     _run_cmd(['/sbin/ifup', WLAN_DEVICE], timeout=60)

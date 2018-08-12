@@ -12,8 +12,15 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 #
-#   Copyright 2017 Hadi Esiely
-#   All changes made
+'''
+All changes made
+
+Copyright 2017 Ewan Mellor, Rolf Widenfelt
+
+Changes authored by Hadi Esiely:
+Copyright 2018 The Johns Hopkins University Applied Physics Laboratory LLC.
+'''
+
 
 
 import glob

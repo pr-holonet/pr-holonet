@@ -1,6 +1,9 @@
 #!/bin/bash
 
-# Copyright 2017 Hadi Esiely
+# Copyright 2017 Ewan Mellor
+#
+# Changes authored by Hadi Esiely:
+# Copyright 2018 The Johns Hopkins University Applied Physics Laboratory LLC.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:

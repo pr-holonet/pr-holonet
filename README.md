@@ -49,7 +49,7 @@ echo 'deb https://dl.yarnpkg.com/debian/ stable main' \
     >/etc/apt/sources.list.d/yarn.list
 apt -y update
 apt -y install python3 python3-flask gunicorn3 python3-rpi.gpio \
-    supervisor yarn
+    supervisor yarn hostpad isc-dhcp-server dnsmasq 
 pip3 install flask-webpack phonenumberslite
 
 mkdir -p /opt/pr-holonet
